@@ -22,7 +22,8 @@ function closeMenu() {
 
     <!-- ================= SIDEBAR ================= -->
     <aside :class="[
-        'fixed md:static top-0 left-0 h-screen w-72 bg-gray-100 border-r border-gray-200 flex flex-col z-50 transition-transform duration-300',
+        // 🔥 WICHTIG: md:fixed statt md:static
+        'fixed md:fixed top-0 left-0 h-screen w-72 bg-white/60 backdrop-blur-xl border-r border-gray-200 flex flex-col z-50 transition-transform duration-300',
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
     ]">
         <!-- Brand -->
@@ -73,7 +74,6 @@ function closeMenu() {
                 <ion-icon name="person" class="w-6 h-6"></ion-icon>
                 <span class="font-semibold">User</span>
             </router-link>
-
         </div>
     </aside>
 </template>

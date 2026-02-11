@@ -6,94 +6,94 @@ let activeBalanceId = null
 let activeAccountName = ""
 
 function openAccountModal(balanceId, accountName) {
-  activeBalanceId = balanceId
-  activeAccountName = accountName
+    activeBalanceId = balanceId
+    activeAccountName = accountName
 
-  document.getElementById("entryAmount").value = ""
-  document.getElementById("entryName").value = ""
-  document.getElementById("entryDate").value = ""
-  document.getElementById("entryDesc").value = ""
+    document.getElementById("entryAmount").value = ""
+    document.getElementById("entryName").value = ""
+    document.getElementById("entryDate").value = ""
+    document.getElementById("entryDesc").value = ""
 
-  document.getElementById("accountTargetText").innerText =
-    "Eintrag wird zu „" + accountName + "“ hinzugefügt"
+    document.getElementById("accountTargetText").innerText =
+        "Eintrag wird zu „" + accountName + "“ hinzugefügt"
 
-  document.getElementById("accountModal").classList.remove("hidden")
+    document.getElementById("accountModal").classList.remove("hidden")
 }
 
 function closeAccountModal() {
-  document.getElementById("accountModal").classList.add("hidden")
-  activeBalanceId = null
+    document.getElementById("accountModal").classList.add("hidden")
+    activeBalanceId = null
 }
 
 function updateBalanceColor(element, value) {
-  if (value < 0) {
-    element.classList.add("text-red-500")
-    element.classList.remove("text-gray-900")
-  } else {
-    element.classList.remove("text-red-500")
-    element.classList.add("text-gray-900")
-  }
+    if (value < 0) {
+        element.classList.add("text-red-500")
+        element.classList.remove("text-gray-900")
+    } else {
+        element.classList.remove("text-red-500")
+        element.classList.add("text-gray-900")
+    }
 }
 
 function saveAccountEntry() {
-  const amount = parseFloat(document.getElementById("entryAmount").value)
+    const amount = parseFloat(document.getElementById("entryAmount").value)
 
-  if (isNaN(amount)) {
-    alert("Bitte einen gültigen Betrag eingeben.")
-    return
-  }
+    if (isNaN(amount)) {
+        alert("Bitte einen gültigen Betrag eingeben.")
+        return
+    }
 
-  const balanceEl = document.getElementById(activeBalanceId)
+    const balanceEl = document.getElementById(activeBalanceId)
 
-  let current = balanceEl.innerText
-    .replace("€", "")
-    .replace(".", "")
-    .replace(",", ".")
-    .replace("-", "")
-    .trim()
+    let current = balanceEl.innerText
+        .replace("€", "")
+        .replace(".", "")
+        .replace(",", ".")
+        .replace("-", "")
+        .trim()
 
-  current = parseFloat(current) || 0
+    current = parseFloat(current) || 0
 
-  const newTotal = current + amount
-  balanceEl.innerText = "€" + newTotal.toLocaleString("de-DE") + ",-"
+    const newTotal = current + amount
+    balanceEl.innerText = "€" + newTotal.toLocaleString("de-DE") + ",-"
 
-  updateBalanceColor(balanceEl, newTotal)
+    updateBalanceColor(balanceEl, newTotal)
 
-  closeAccountModal()
+    closeAccountModal()
 }
 
 function openAddModal() {
-  document.getElementById("bankType").value = ""
-  document.getElementById("accountName").value = ""
-  document.getElementById("accountOwner").value = ""
-  document.getElementById("accountBalance").value = ""
+    document.getElementById("bankType").value = ""
+    document.getElementById("accountName").value = ""
+    document.getElementById("accountOwner").value = ""
+    document.getElementById("accountBalance").value = ""
 
-  document.getElementById("addAccountModal").classList.remove("hidden")
+    document.getElementById("addAccountModal").classList.remove("hidden")
 }
 
 function closeAddModal() {
-  document.getElementById("addAccountModal").classList.add("hidden")
+    document.getElementById("addAccountModal").classList.add("hidden")
 }
 
 function saveNewAccount() {
-  const bank = document.getElementById("bankType").value
-  const name = document.getElementById("accountName").value.trim()
-  const owner = document.getElementById("accountOwner").value.trim()
-  const balance = parseFloat(document.getElementById("accountBalance").value)
+    const bank = document.getElementById("bankType").value
+    const name = document.getElementById("accountName").value.trim()
+    const owner = document.getElementById("accountOwner").value.trim()
+    const balance = parseFloat(document.getElementById("accountBalance").value)
 
-  if (!bank || !name || !owner || isNaN(balance)) {
-    alert("Bitte alle Felder korrekt ausfüllen.")
-    return
-  }
+    if (!bank || !name || !owner || isNaN(balance)) {
+        alert("Bitte alle Felder korrekt ausfüllen.")
+        return
+    }
 
-  let iconSrc = ""
-  if (bank === "mastercard") iconSrc = "/img/mc_symbol.svg"
-  if (bank === "paypal") iconSrc = "/img/paypal_icon.svg"
-  if (bank === "revolut") iconSrc = "/img/revolut_icon.svg"
+    let iconSrc = ""
+    if (bank === "mastercard") iconSrc = "/img/mc_symbol.svg"
+    if (bank === "paypal") iconSrc = "/img/paypal_icon.svg"
+    if (bank === "revolut") iconSrc = "/img/revolut_icon.svg"
 
-  const id = "balance-" + crypto.randomUUID()
+    const id = "balance-" + crypto.randomUUID()
 
-  const html = `
+    const html = `
   <section class="pb-5">
       <div class="rounded-2xl bg-white p-6 md:p-8 border border-gray-200">
           <div>
@@ -117,47 +117,47 @@ function saveNewAccount() {
   </section>
   `
 
-  document.querySelector("main").insertAdjacentHTML("beforeend", html)
+    document.querySelector("main").insertAdjacentHTML("beforeend", html)
 
-  closeAddModal()
+    closeAddModal()
 }
 
 onMounted(() => {
-  window.openAccountModal = openAccountModal
-  window.closeAccountModal = closeAccountModal
-  window.saveAccountEntry = saveAccountEntry
-  window.openAddModal = openAddModal
-  window.closeAddModal = closeAddModal
-  window.saveNewAccount = saveNewAccount
+    window.openAccountModal = openAccountModal
+    window.closeAccountModal = closeAccountModal
+    window.saveAccountEntry = saveAccountEntry
+    window.openAddModal = openAddModal
+    window.closeAddModal = closeAddModal
+    window.saveNewAccount = saveNewAccount
 
-  const subCategories = [
-    "Lebensmittel",
-    "Restaurant",
-    "Transport",
-    "Freizeit",
-    "Abos"
-  ]
+    const subCategories = [
+        "Lebensmittel",
+        "Restaurant",
+        "Transport",
+        "Freizeit",
+        "Abos"
+    ]
 
-  const select = document.getElementById("entrySubCategory")
-  if (!select) return
+    const select = document.getElementById("entrySubCategory")
+    if (!select) return
 
-  select.innerHTML = '<option value="">Bitte wählen</option>'
+    select.innerHTML = '<option value="">Bitte wählen</option>'
 
-  subCategories.forEach(sub => {
-    const option = document.createElement("option")
-    option.value = sub.toLowerCase()
-    option.textContent = sub
-    select.appendChild(option)
-  })
+    subCategories.forEach(sub => {
+        const option = document.createElement("option")
+        option.value = sub.toLowerCase()
+        option.textContent = sub
+        select.appendChild(option)
+    })
 })
 </script>
 
 <template>
-  <div class="min-h-screen flex bg-gray-50 text-gray-900">
-    <Navbar />
+    <div class="min-h-screen flex bg-gray-50 text-gray-900">
+        <Navbar />
 
-    <main class="flex-1 min-w-0 p-6">
-            <h1 class="text-3xl font-semibold mb-6">Konten</h1>
+        <main class="flex-1 min-w-0 p-6">
+            <h1 class="text-3xl font-semibold mb-6">Dashboard</h1>
             <!-- Top bar (just the page label to mimic mockup) -->
 
             <section class="pb-5">
@@ -253,10 +253,10 @@ onMounted(() => {
 
         </main>
 
-    <!-- Deine beiden Modals ebenfalls hier 1:1 einfügen -->
-  </div>
+        <!-- Deine beiden Modals ebenfalls hier 1:1 einfügen -->
+    </div>
 
-  <!-- Floating Add Button -->
+    <!-- Floating Add Button -->
     <button onclick="openAddModal()"
         class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl">
         <ion-icon name="add-outline"></ion-icon>

@@ -87,9 +87,9 @@ function saveNewAccount() {
   }
 
   let iconSrc = ""
-  if (bank === "mastercard") iconSrc = "../assets/mc_symbol.svg"
-  if (bank === "paypal") iconSrc = "../assets/paypal_icon.svg"
-  if (bank === "revolut") iconSrc = "../assets/revolut_icon.svg"
+  if (bank === "mastercard") iconSrc = "/img/mc_symbol.svg"
+  if (bank === "paypal") iconSrc = "/img/paypal_icon.svg"
+  if (bank === "revolut") iconSrc = "/img/revolut_icon.svg"
 
   const id = "balance-" + crypto.randomUUID()
 
@@ -169,7 +169,7 @@ onMounted(() => {
                         <!-- Headline with icon -->
                         <div class="flex items-center gap-3 mb-2">
                             <div class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-                                <img src="../assets/mc_symbol.svg" class="max-w-full max-h-full object-contain" />
+                                <img src="/img/mc_symbol.svg" class="max-w-full max-h-full object-contain" />
                             </div>
                             <h2 class="text-xl md:text-2xl font-semibold">
                                 Girokonto #9237
@@ -199,7 +199,7 @@ onMounted(() => {
                         <!-- Headline with icon -->
                         <div class="flex items-center gap-3 mb-2">
                             <div class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-                                <img src="../assets/revolut_icon.svg" class="max-w-full max-h-full object-contain" />
+                                <img src="/img/revolut_icon.svg" class="max-w-full max-h-full object-contain" />
                             </div>
                             <h2 class="text-xl md:text-2xl font-semibold">
                                 Revolut #2895
@@ -229,7 +229,7 @@ onMounted(() => {
                         <!-- Headline with icon -->
                         <div class="flex items-center gap-3 mb-2">
                             <div class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-                                <img src="../assets/paypal_icon.svg" class="max-w-full max-h-full object-contain" />
+                                <img src="/img/paypal_icon.svg" class="max-w-full max-h-full object-contain" />
                             </div>
 
                             <h2 class="text-xl md:text-2xl font-semibold">

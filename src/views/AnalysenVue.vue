@@ -133,10 +133,14 @@ onMounted(updateChart)
 
         <main class="flex-1 min-w-0 p-4 md:p-6">
 
-            <h1 class="text-3xl font-semibold mb-8">Analysen</h1>
+            <h1 class="text-3xl font-semibold mb-4">Analysen</h1>
+
+            <h2 class="text-2xl font-semibold mb-2">Gesamtausgaben</h2>
+
+            <hr>
 
             <!-- Filter Buttons -->
-            <div class="flex gap-4 mb-6">
+            <div class="flex gap-4 mb-6 mt-5">
                 <button v-for="m in [3, 6, 12]" :key="m" @click="selectedMonths = m" :class="[
                     'px-4 py-2 rounded-lg border',
                     selectedMonths === m

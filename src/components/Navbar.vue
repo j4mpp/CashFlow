@@ -69,10 +69,11 @@ function closeMenu() {
 
         <!-- User -->
         <div class="mt-auto p-5">
-            <a href="login.html" class="flex gap-3 items-center">
+            <router-link to="/login" class="flex gap-3 items-center">
                 <ion-icon name="person" class="w-6 h-6"></ion-icon>
                 <span class="font-semibold">User</span>
-            </a>
+            </router-link>
+
         </div>
     </aside>
 </template>

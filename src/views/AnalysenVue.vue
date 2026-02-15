@@ -128,8 +128,7 @@ onMounted(updateChart)
 
 
 <template>
-    <div class="min-h-screen flex bg-white text-gray-900">
-        <Navbar />
+    <div class="min-h-screen flex text-gray-900">
 
         <main class="flex-1 min-w-0 p-4 md:p-6">
 

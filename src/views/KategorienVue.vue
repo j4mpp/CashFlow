@@ -160,9 +160,7 @@ const allSubcategories = computed(() =>
 </script>
 
 <template>
-  <div class="min-h-screen flex bg-gray-50 text-gray-900">
-
-    <Navbar />
+  <div class="min-h-screen flex text-gray-900">
 
     <!-- MAIN -->
     <main class="flex-1 p-6">
@@ -171,59 +169,34 @@ const allSubcategories = computed(() =>
       <div class="space-y-4">
 
         <!-- MAIN CATEGORIES -->
-        <div
-          v-for="cat in categories"
-          :key="cat.id"
-          class="border border-gray-300 rounded-xl bg-white"
-        >
-          <button
-            @click="toggleCategory(cat)"
-            class="w-full flex items-center justify-between px-4 py-3 text-left font-medium"
-          >
+        <div v-for="cat in categories" :key="cat.id" class="border border-gray-300 rounded-xl bg-white">
+          <button @click="toggleCategory(cat)"
+            class="w-full flex items-center justify-between px-4 py-3 text-left font-medium">
             {{ cat.name }}
-            <ion-icon
-              :name="cat.open ? 'chevron-up-outline' : 'chevron-down-outline'"
-            />
+            <ion-icon :name="cat.open ? 'chevron-up-outline' : 'chevron-down-outline'" />
           </button>
 
           <div v-if="cat.open" class="px-4 pb-4">
 
-            <div
-              v-if="cat.subcategories.length === 0"
-              class="text-sm text-gray-400"
-            >
+            <div v-if="cat.subcategories.length === 0" class="text-sm text-gray-400">
               Noch keine Unterkategorien.
             </div>
 
             <!-- SUBCATEGORIES -->
-            <div
-              v-for="sub in cat.subcategories"
-              :key="sub.id"
-              class="mt-3 border border-gray-200 rounded-lg bg-gray-50"
-            >
-              <button
-                @click="toggleSub(sub)"
-                class="w-full flex items-center justify-between px-3 py-2 text-left"
-              >
+            <div v-for="sub in cat.subcategories" :key="sub.id"
+              class="mt-3 border border-gray-200 rounded-lg bg-gray-50">
+              <button @click="toggleSub(sub)" class="w-full flex items-center justify-between px-3 py-2 text-left">
                 {{ sub.name }}
-                <ion-icon
-                  :name="sub.open ? 'chevron-up-outline' : 'chevron-down-outline'"
-                />
+                <ion-icon :name="sub.open ? 'chevron-up-outline' : 'chevron-down-outline'" />
               </button>
 
               <div v-if="sub.open" class="px-5 pb-3 space-y-2">
-                <div
-                  v-if="sub.entries.length === 0"
-                  class="text-sm text-gray-400"
-                >
+                <div v-if="sub.entries.length === 0" class="text-sm text-gray-400">
                   Noch keine Beträge.
                 </div>
 
-                <div
-                  v-for="entry in sub.entries"
-                  :key="entry.id"
-                  class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm text-sm space-y-1"
-                >
+                <div v-for="entry in sub.entries" :key="entry.id"
+                  class="p-3 bg-white rounded-lg border border-gray-200 shadow-sm text-sm space-y-1">
                   <p><strong>{{ entry.name }}</strong> – {{ entry.amount }} €</p>
                   <p v-if="entry.date" class="text-gray-600">
                     {{ entry.date }}
@@ -241,59 +214,35 @@ const allSubcategories = computed(() =>
     </main>
 
     <!-- FLOAT BUTTON -->
-    <button
-      @click="openModal"
-      class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl"
-    >
+    <button @click="openModal"
+      class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl">
       <ion-icon name="add-outline"></ion-icon>
     </button>
 
     <!-- MODAL -->
-    <div
-      v-if="showModal"
-      class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
-    >
-      <div
-        class="bg-white w-11/12 max-w-md mx-auto mt-40 p-6 rounded-xl shadow-xl"
-      >
+    <div v-if="showModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50">
+      <div class="bg-white w-11/12 max-w-md mx-auto mt-40 p-6 rounded-xl shadow-xl">
         <h2 class="text-xl font-semibold mb-4">
           Neuen Eintrag hinzufügen
         </h2>
 
-        <select
-          v-model="mode"
-          class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
-        >
+        <select v-model="mode" class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4">
           <option value="category">Kategorie</option>
           <option value="entry">Eintrag</option>
         </select>
 
         <!-- CATEGORY FORM -->
         <div v-if="mode === 'category'" class="space-y-3">
-          <input
-            v-model="catName"
-            placeholder="Name"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-          />
+          <input v-model="catName" placeholder="Name" class="w-full px-3 py-2 border border-gray-300 rounded-lg" />
 
-          <select
-            v-model="catType"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-          >
+          <select v-model="catType" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
             <option value="main">Hauptkategorie</option>
             <option value="sub">Unterkategorie</option>
           </select>
 
-          <select
-            v-if="catType === 'sub'"
-            v-model="parentCategory"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg"
-          >
-            <option
-              v-for="cat in mainCategories"
-              :key="cat.id"
-              :value="cat.id"
-            >
+          <select v-if="catType === 'sub'" v-model="parentCategory"
+            class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+            <option v-for="cat in mainCategories" :key="cat.id" :value="cat.id">
               {{ cat.name }}
             </option>
           </select>
@@ -301,22 +250,14 @@ const allSubcategories = computed(() =>
 
         <!-- ENTRY FORM -->
         <div v-if="mode === 'entry'" class="space-y-3">
-          <input v-model="entryAmount" type="number" placeholder="Betrag"
-            class="w-full px-3 py-2 border rounded-lg" />
-          <input v-model="entryName" placeholder="Name"
-            class="w-full px-3 py-2 border rounded-lg" />
-          <input v-model="entryDate" type="date"
-            class="w-full px-3 py-2 border rounded-lg" />
+          <input v-model="entryAmount" type="number" placeholder="Betrag" class="w-full px-3 py-2 border rounded-lg" />
+          <input v-model="entryName" placeholder="Name" class="w-full px-3 py-2 border rounded-lg" />
+          <input v-model="entryDate" type="date" class="w-full px-3 py-2 border rounded-lg" />
           <textarea v-model="entryDesc" placeholder="Beschreibung"
             class="w-full px-3 py-2 border rounded-lg"></textarea>
 
-          <select v-model="entrySubCategory"
-            class="w-full px-3 py-2 border rounded-lg">
-            <option
-              v-for="sub in allSubcategories"
-              :key="sub.id"
-              :value="sub.id"
-            >
+          <select v-model="entrySubCategory" class="w-full px-3 py-2 border rounded-lg">
+            <option v-for="sub in allSubcategories" :key="sub.id" :value="sub.id">
               {{ sub.name }}
             </option>
           </select>
@@ -326,8 +267,7 @@ const allSubcategories = computed(() =>
           <button @click="closeModal" class="px-4 py-2 border rounded-lg">
             Abbrechen
           </button>
-          <button @click="saveData"
-            class="px-4 py-2 bg-rose-500 text-white rounded-lg">
+          <button @click="saveData" class="px-4 py-2 bg-rose-500 text-white rounded-lg">
             Speichern
           </button>
         </div>

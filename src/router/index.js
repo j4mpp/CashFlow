@@ -21,9 +21,9 @@ const routes = [
     component: AnalysenVue
   },
   {
-    path: '/login',
-    name: 'login',
-    component: LoginView
+    path: "/login",
+    component: LoginView,
+    meta: { layout: "auth" }
   },
   {
     path: '/about',

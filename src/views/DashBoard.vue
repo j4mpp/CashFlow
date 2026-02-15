@@ -154,7 +154,7 @@ onMounted(() => {
 
 <template>
     <div class="flex text-gray-900">
-        <Navbar />
+
 
         <main class="flex-1 min-w-0 p-6">
             <h1 class="text-3xl font-semibold mb-6 ">Dashboard</h1>
@@ -258,7 +258,7 @@ onMounted(() => {
 
     <!-- Floating Add Button -->
     <button onclick="openAddModal()"
-        class="fixed bottom-6 right-6 w-16 h-16 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl transition transform hover:scale-110">
+        class="fixed bottom-6 right-6 w-16 h-16 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl transition-transform duration-200 ease-out hover:scale-110">
         <ion-icon name="add-outline"></ion-icon>
     </button>
 
@@ -309,7 +309,10 @@ onMounted(() => {
     <div id="addAccountModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden z-50">
         <div class="bg-white w-11/12 max-w-lg mx-auto mt-32 p-8 rounded-2xl shadow-xl">
 
-            <h2 class="text-2xl font-semibold mb-6">Neues Bankkonto hinzufügen</h2>
+            <span class="h-20 pb-3 flex items-center gap-3">
+                <ion-icon name="card" class="w-8 h-8 text-teal-400"></ion-icon>
+                <h2 class="text-2xl font-semibold">Neues Bankkonto hinzufügen</h2>
+            </span>
 
             <!-- Bank auswählen -->
             <label class="block text-sm mb-1">Bank / Konto</label>

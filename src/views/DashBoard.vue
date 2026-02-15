@@ -1,6 +1,8 @@
 <script setup>
 import { onMounted } from "vue"
 import Navbar from "@/components/Navbar.vue"
+import BankAccountCard from "@/components/BankAccountCard.vue"
+
 
 let activeBalanceId = null
 let activeAccountName = ""
@@ -160,96 +162,15 @@ onMounted(() => {
             <h1 class="text-3xl font-semibold mb-6 ">Dashboard</h1>
             <!-- Top bar (just the page label to mimic mockup) -->
 
-            <section class="pb-5">
-                <!-- Top summary card from mockup -->
-                <div class="rounded-2xl p-6 md:p-8 bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl">
+            <BankAccountCard accountName="Girokonto #9237" accountOwner="CashFlow Team" icon="/img/mc_symbol.svg"
+                balance="€9.800,-" balanceId="balance-1" @add-entry="openAccountModal" />
 
-                    <!-- Texts -->
-                    <div>
-                        <!-- Headline with icon -->
-                        <div class="flex items-center gap-3 mb-2">
-                            <div class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-                                <img src="/img/mc_symbol.svg" class="max-w-full max-h-full object-contain" />
-                            </div>
-                            <h2 class="text-xl md:text-2xl font-semibold">
-                                Girokonto #9237
-                            </h2>
-                            <ion-icon name="add-outline"
-                                class="ml-auto h-6 w-6 cursor-pointer transition-transform duration-200 ease-out hover:scale-125 active:scale-95"
-                                onclick="openAccountModal('balance-1', 'Girokonto #9237')">
-                            </ion-icon>
+            <BankAccountCard accountName="Revolut #2895" accountOwner="CashFlow Team" icon="/img/revolut_icon.svg"
+                balance="€553,-" balanceId="balance-2" @add-entry="openAccountModal" />
 
+            <BankAccountCard accountName="PayPal #2895" accountOwner="CashFlow Team" icon="/img/paypal_icon.svg"
+                balance="€1.198,-" balanceId="balance-3" @add-entry="openAccountModal" />
 
-                        </div>
-
-                        <p class="text-gray-700">von Max Mustermann</p>
-                        <hr class="my-4 border-gray-400" />
-                        <p class="text-lg md:text-xl text-gray-800">Gesamtausgaben</p>
-                        <p id="balance-1" class="mt-1 text-3xl md:text-4xl font-semibold">€9.800,-</p>
-                    </div>
-                </div>
-            </section>
-
-            <section class="pb-5">
-                <!-- Top summary card from mockup -->
-                <div class="rounded-2xl p-6 md:p-8 bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl">
-
-                    <!-- Texts -->
-                    <div>
-                        <!-- Headline with icon -->
-                        <div class="flex items-center gap-3 mb-2">
-                            <div class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-                                <img src="/img/revolut_icon.svg" class="max-w-full max-h-full object-contain" />
-                            </div>
-                            <h2 class="text-xl md:text-2xl font-semibold">
-                                Revolut #2895
-                            </h2>
-                            <ion-icon name="add-outline"
-                                class="ml-auto h-6 w-6 cursor-pointer transition-transform duration-200 ease-out hover:scale-125 active:scale-95"
-                                onclick="openAccountModal('balance-2', 'Revolut #2895')">
-                            </ion-icon>
-
-
-                        </div>
-
-                        <p class="text-gray-700">von Yousef Sheikho</p>
-                        <hr class="my-4 border-gray-400" />
-                        <p class="text-lg md:text-xl text-gray-800">Gesamtausgaben</p>
-                        <p id="balance-2" class="mt-1 text-3xl md:text-4xl font-semibold">€553,-</p>
-                    </div>
-                </div>
-            </section>
-
-            <section class="pb-5">
-                <!-- Top summary card from mockup -->
-                <div class="rounded-2xl p-6 md:p-8 bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl">
-
-                    <!-- Texts -->
-                    <div>
-                        <!-- Headline with icon -->
-                        <div class="flex items-center gap-3 mb-2">
-                            <div class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center">
-                                <img src="/img/paypal_icon.svg" class="max-w-full max-h-full object-contain" />
-                            </div>
-
-                            <h2 class="text-xl md:text-2xl font-semibold">
-                                PayPal #2895
-                            </h2>
-                            <ion-icon name="add-outline"
-                                class="ml-auto h-6 w-6 cursor-pointer transition-transform duration-200 ease-out hover:scale-125 active:scale-95"
-                                onclick="openAccountModal('balance-3', 'PayPal #2895')">
-                            </ion-icon>
-
-
-                        </div>
-
-                        <p class="text-gray-700">von Max Mustermann</p>
-                        <hr class="my-4 border-gray-400" />
-                        <p class="text-lg md:text-xl text-gray-800">Gesamtausgaben</p>
-                        <p id="balance-3" class="mt-1 text-3xl md:text-4xl font-semibold">€1.198,-</p>
-                    </div>
-                </div>
-            </section>
 
         </main>
 

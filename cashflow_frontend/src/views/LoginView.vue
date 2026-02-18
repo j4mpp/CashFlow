@@ -12,7 +12,7 @@ async function login() {
     error.value = ""
 
     try {
-        const res = await fetch("http://localhost:8000/auth/login.php", {
+        const res = await fetch("../../backend/auth/login.php", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -69,7 +69,7 @@ async function login() {
 
                     <input v-model="email" placeholder="Please enter your email"
                         class="rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400 outline-none px-3 py-3 pl-10 w-full transition"
-                        required type="email" />
+                    />
                 </div>
             </div>
 

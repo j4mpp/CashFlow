@@ -42,6 +42,85 @@ const mockCategories = [
   }
 ]
 
+const editing = ref(null)
+// editing = { type: "cat"|"sub", id: number|string, originalName: string }
+
+function startEditCategory(cat) {
+  editing.value = { type: "cat", id: cat.id, originalName: cat.name }
+  cat._editName = cat.name
+}
+
+function startEditSub(sub) {
+  editing.value = { type: "sub", id: sub.id, originalName: sub.name }
+  sub._editName = sub.name
+}
+
+function cancelEdit(catOrSub) {
+  if (catOrSub?._editName !== undefined) {
+    catOrSub._editName = undefined
+  }
+  editing.value = null
+}
+
+async function saveEditCategory(cat) {
+  const userid = localStorage.getItem("userid")
+  const newName = (cat._editName || "").trim()
+  if (!newName) return alert("Bitte Namen eingeben.")
+
+  await fetch("http://localhost:8000/categories/update.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userid, id: cat.id, name: newName })
+  })
+
+  editing.value = null
+  await fetchCategories()
+}
+
+async function deleteCategory(cat) {
+  const userid = localStorage.getItem("userid")
+  if (!confirm("Kategorie wirklich löschen? (inkl. Unterkategorien)")) return
+
+  await fetch("http://localhost:8000/categories/delete.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userid, id: cat.id })
+  })
+
+  editing.value = null
+  await fetchCategories()
+}
+
+async function saveEditSub(sub) {
+  const userid = localStorage.getItem("userid")
+  const newName = (sub._editName || "").trim()
+  if (!newName) return alert("Bitte Namen eingeben.")
+
+  await fetch("http://localhost:8000/subcategories/update.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userid, id: sub.id, name: newName })
+  })
+
+  editing.value = null
+  await fetchCategories()
+}
+
+async function deleteSub(sub) {
+  const userid = localStorage.getItem("userid")
+  if (!confirm("Unterkategorie wirklich löschen?")) return
+
+  await fetch("http://localhost:8000/subcategories/delete.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userid, id: sub.id })
+  })
+
+  editing.value = null
+  await fetchCategories()
+}
+
+
 /* =========================
    FETCH FROM BACKEND
 ========================= */
@@ -211,7 +290,26 @@ const mainCategories = computed(() => categories.value)
 
           <button @click="toggleCategory(cat)"
             class="w-full flex items-center justify-between px-5 py-4 text-left font-medium text-lg">
-            {{ cat.name }}
+            <!-- 🖊️ EDIT ICON -->
+            <ion-icon name="pencil" class="mr-3" @click.stop="startEditCategory(cat)"></ion-icon>
+
+            <!-- Name oder Input -->
+            <template v-if="editing?.type === 'cat' && editing?.id === cat.id">
+              <input v-model="cat._editName" class="flex-1 bg-transparent outline-none" />
+              <div class="flex items-center gap-3 ml-3">
+                <button class="text-sm text-red-600" @click.stop="deleteCategory(cat)">
+                  Delete
+                </button>
+                <button class="text-sm text-emerald-600" @click.stop="saveEditCategory(cat)">
+                  Save
+                </button>
+              </div>
+            </template>
+
+            <template v-else>
+              <span class="flex-1">{{ cat.name }}</span>
+            </template>
+
             <ion-icon :name="cat.open ? 'chevron-up-outline' : 'chevron-down-outline'" />
           </button>
 
@@ -226,7 +324,26 @@ const mainCategories = computed(() => categories.value)
               class="mt-3 rounded-xl bg-white/80 backdrop-blur-md border border-gray-200">
 
               <button @click="toggleSub(sub)" class="w-full flex items-center justify-between px-4 py-3 text-left">
-                {{ sub.name }}
+                <!-- 🖊️ STIFT für SUB -->
+                <ion-icon name="pencil" class="mr-3" @click.stop="startEditSub(sub)"></ion-icon>
+
+                <!-- Name oder Input -->
+                <template v-if="editing?.type === 'sub' && editing?.id === sub.id">
+                  <input v-model="sub._editName" class="flex-1 bg-transparent outline-none" />
+                  <div class="flex items-center gap-3 ml-3">
+                    <button class="text-sm text-red-600" @click.stop="deleteSub(sub)">
+                      Delete
+                    </button>
+                    <button class="text-sm text-emerald-600" @click.stop="saveEditSub(sub)">
+                      Save
+                    </button>
+                  </div>
+                </template>
+
+                <template v-else>
+                  <span class="flex-1">{{ sub.name }}</span>
+                </template>
+
                 <ion-icon :name="sub.open ? 'chevron-up-outline' : 'chevron-down-outline'" />
               </button>
 
@@ -237,6 +354,7 @@ const mainCategories = computed(() => categories.value)
 
           </div>
         </div>
+
 
       </div>
 

@@ -10,9 +10,11 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($user && password_verify($data["password"], $user["password"])) {
     echo json_encode([
-        "message" => "Login success",
-        "userid" => $user["id"]
-    ]);
+    "message" => "Login success",
+    "userid" => $user["id"],
+    "name" => $user["name"]
+]);
+
 } else {
     echo json_encode(["error" => "Invalid credentials"]);
 }

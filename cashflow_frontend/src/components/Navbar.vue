@@ -1,11 +1,25 @@
 <script setup>
-import { ref } from "vue"
+import { ref, onMounted } from "vue"
+import { useRouter } from "vue-router"
 
 const mobileOpen = ref(false)
+const username = ref(null)
+const router = useRouter()
 
 function closeMenu() {
     mobileOpen.value = false
 }
+
+function logout() {
+    localStorage.removeItem("userid")
+    localStorage.removeItem("username")
+    username.value = null
+    router.push("/login")
+}
+
+onMounted(() => {
+    username.value = localStorage.getItem("username")
+})
 </script>
 
 <template>
@@ -22,7 +36,6 @@ function closeMenu() {
 
     <!-- ================= SIDEBAR ================= -->
     <aside :class="[
-        // 🔥 WICHTIG: md:fixed statt md:static
         'fixed md:fixed top-0 left-0 h-screen w-72 bg-white/60 backdrop-blur-xl border-r border-gray-200 flex flex-col z-50 transition-transform duration-300',
         mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
     ]">
@@ -71,10 +84,15 @@ function closeMenu() {
 
         <!-- User -->
         <div class="mt-auto p-5">
-            <router-link to="/login" class="flex gap-3 items-center">
+            <router-link v-if="!username" to="/login" class="flex gap-3 items-center">
                 <ion-icon name="person" class="w-6 h-6"></ion-icon>
                 <span class="font-semibold">User</span>
             </router-link>
+
+            <div v-else class="flex gap-3 items-center cursor-pointer" @click="logout">
+                <ion-icon name="person" class="w-6 h-6"></ion-icon>
+                <span class="font-semibold">{{ username }}</span>
+            </div>
         </div>
     </aside>
 </template>

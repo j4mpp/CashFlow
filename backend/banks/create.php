@@ -3,7 +3,11 @@ require "../db.php";
 
 $data = json_decode(file_get_contents("php://input"), true);
 
-$stmt = $pdo->prepare("INSERT INTO banks (userid, name, iban, amount, bankfirma) VALUES (?, ?, ?, ?, ?)");
+$stmt = $pdo->prepare("
+    INSERT INTO banks (userid, name, iban, amount, bankfirma)
+    VALUES (?, ?, ?, ?, ?)
+");
+
 $stmt->execute([
     $data["userid"],
     $data["name"],
@@ -12,4 +16,8 @@ $stmt->execute([
     $data["bankfirma"]
 ]);
 
-echo json_encode(["message" => "Bank created"]);
+
+echo json_encode([
+    "success" => true,
+    "id" => $pdo->lastInsertId()
+]);

@@ -4,7 +4,8 @@ const props = defineProps({
     accountOwner: String,
     icon: String,
     balance: String,
-    balanceId: String
+    balanceId: String,
+    iban: String,
 })
 
 
@@ -27,16 +28,23 @@ function handleAddClick() {
                         <img :src="icon" class="max-w-full max-h-full object-contain" />
                     </div>
 
-                    <h2 class="text-xl md:text-2xl font-semibold">
-                        {{ accountName }}
-                    </h2>
+                    <div>
+                        <h2 class="text-xl md:text-2xl font-semibold">
+                            {{ accountName }}
+                        </h2>
+
+                        <p v-if="iban" class="text-sm text-gray-500">
+                            {{ iban }}
+                        </p>
+                    </div>
+
 
                     <ion-icon name="add-outline"
                         class="ml-auto h-6 w-6 cursor-pointer transition-transform duration-200 ease-out hover:scale-125 active:scale-95"
                         @click="handleAddClick" />
                 </div>
 
-                <p class="text-gray-700">von {{ accountOwner }}</p>
+                <!--<p class="text-gray-700">von {{ accountOwner }}</p>-->
 
                 <hr class="my-4 border-gray-400" />
 

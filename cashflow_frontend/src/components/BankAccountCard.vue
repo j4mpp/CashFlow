@@ -8,13 +8,11 @@ const props = defineProps({
     iban: String,
 })
 
-
-const emit = defineEmits(["add-entry"])
+const emit = defineEmits(["add-entry", "edit-bank"])
 
 function handleAddClick() {
     emit("add-entry", props.balanceId, props.accountName)
 }
-
 </script>
 
 <template>
@@ -38,13 +36,19 @@ function handleAddClick() {
                         </p>
                     </div>
 
+                    <!-- RECHTS: STIFT + PLUS -->
+                    <div class="ml-auto flex items-center gap-4">
+                        <!-- STIFT -->
+                        <ion-icon name="pencil"
+                            class="h-6 w-6 cursor-pointer transition-transform duration-200 ease-out hover:scale-125 active:scale-95"
+                            @click="$emit('edit-bank')" />
 
-                    <ion-icon name="add-outline"
-                        class="ml-auto h-6 w-6 cursor-pointer transition-transform duration-200 ease-out hover:scale-125 active:scale-95"
-                        @click="handleAddClick" />
+                        <!-- PLUS -->
+                        <ion-icon name="add-outline"
+                            class="h-6 w-6 cursor-pointer transition-transform duration-200 ease-out hover:scale-125 active:scale-95"
+                            @click="handleAddClick" />
+                    </div>
                 </div>
-
-                <!--<p class="text-gray-700">von {{ accountOwner }}</p>-->
 
                 <hr class="my-4 border-gray-400" />
 

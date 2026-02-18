@@ -12,7 +12,7 @@ async function login() {
     error.value = ""
 
     try {
-        const res = await fetch("../../backend/auth/login.php", {
+        const res = await fetch("http://localhost:8000/auth/login.php", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"

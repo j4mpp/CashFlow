@@ -3,6 +3,7 @@ import DashBoard from '@/views/DashBoard.vue'
 import KategorienVue from '@/views/KategorienVue.vue'
 import AnalysenVue from '@/views/AnalysenVue.vue'
 import LoginView from '@/views/LoginView.vue'
+import AktivitaetenView from '@/views/AktivitaetenView.vue'
 
 const routes = [
   {
@@ -19,6 +20,11 @@ const routes = [
     path: '/analysen',
     name: 'analysen',
     component: AnalysenVue
+  },
+  {
+    path: '/activity',
+    name: 'activity',
+    component: AktivitaetenView,
   },
   {
     path: "/login",

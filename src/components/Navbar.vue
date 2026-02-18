@@ -60,10 +60,11 @@ function closeMenu() {
                 </li>
 
                 <li>
-                    <a href="#" class="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-gray-200/60">
+                    <router-link to="/activity" @click="closeMenu"
+                        class="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-gray-200/60">
                         <ion-icon name="eye" class="w-6 h-6"></ion-icon>
                         <span class="font-medium">Aktivitäten</span>
-                    </a>
+                    </router-link>
                 </li>
             </ul>
         </nav>

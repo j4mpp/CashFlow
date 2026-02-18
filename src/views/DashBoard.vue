@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from "vue"
+import { ref, computed, onMounted } from "vue"
 import Navbar from "@/components/Navbar.vue"
 import BankAccountCard from "@/components/BankAccountCard.vue"
 

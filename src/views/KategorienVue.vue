@@ -1,6 +1,7 @@
 <script setup>
 import Navbar from "@/components/Navbar.vue"
-import { ref, computed, onMounted } from "vue"
+import { ref, computed, onMounted, watch } from "vue"
+
 
 /* =========================
    STATE

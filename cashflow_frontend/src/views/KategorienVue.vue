@@ -48,24 +48,47 @@ const mockCategories = [
 
 async function fetchCategories() {
   try {
-    const response = await fetch("http://localhost:8081/api/categories")
+    const userid = localStorage.getItem("userid")
 
-    if (!response.ok) throw new Error("No backend data")
-
-    const data = await response.json()
-
-    if (!data || data.length === 0) {
+    if (!userid) {
       categories.value = mockCategories
-    } else {
-      categories.value = data
+      return
     }
+
+    const catRes = await fetch(
+      `http://localhost:8000/categories/get.php?userid=${userid}`
+    )
+
+    const subRes = await fetch(
+      `http://localhost:8000/subcategories/get.php?userid=${userid}`
+    )
+
+    const cats = await catRes.json()
+    const subs = await subRes.json()
+
+    // Kategorien Struktur aufbauen
+    const structured = cats.map(cat => ({
+      ...cat,
+      open: false,
+      subcategories: subs
+        .filter(sub => sub.categoryid === cat.id)
+        .map(sub => ({
+          ...sub,
+          open: false,
+          entries: []
+        }))
+    }))
+
+    categories.value = structured
+
   } catch (err) {
-    console.log("Backend nicht erreichbar → Mock geladen")
+    console.log("Backend Fehler → Mock geladen")
     categories.value = mockCategories
   } finally {
     loading.value = false
   }
 }
+
 
 onMounted(() => {
   fetchCategories()
@@ -109,32 +132,55 @@ function toggleSub(sub) {
    SAVE CATEGORY
 ========================= */
 
-function saveCategory() {
+async function saveCategory() {
   if (!catName.value) return alert("Bitte Name eingeben.")
 
-  if (catType.value === "main") {
-    categories.value.push({
-      id: crypto.randomUUID(),
-      name: catName.value,
-      open: false,
-      subcategories: []
-    })
+  const userid = localStorage.getItem("userid")
+  if (!userid) return alert("Nicht eingeloggt.")
+
+  try {
+    // 🔹 Hauptkategorie speichern
+    if (catType.value === "main") {
+      await fetch("http://localhost:8000/categories/create.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          userid,
+          name: catName.value
+        })
+      })
+    }
+
+    // 🔹 Unterkategorie speichern
+    if (catType.value === "sub") {
+      if (!parentCategory.value)
+        return alert("Übergeordnete Kategorie wählen")
+
+      await fetch("http://localhost:8000/subcategories/create.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          userid,
+          categoryid: parentCategory.value,
+          name: catName.value
+        })
+      })
+    }
+
+    closeModal()
+
+    // 🔥 Danach neu laden aus DB
+    await fetchCategories()
+
+  } catch (err) {
+    console.log("Fehler beim Speichern:", err)
   }
-
-  if (catType.value === "sub") {
-    const parent = categories.value.find(c => c.id === parentCategory.value)
-    if (!parent) return alert("Übergeordnete Kategorie wählen")
-
-    parent.subcategories.push({
-      id: crypto.randomUUID(),
-      name: catName.value,
-      open: false,
-      entries: []
-    })
-  }
-
-  closeModal()
 }
+
 
 const mainCategories = computed(() => categories.value)
 </script>

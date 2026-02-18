@@ -10,4 +10,7 @@ $stmt->execute([
     $data["name"]
 ]);
 
-echo json_encode(["message" => "Subcategory created"]);
+echo json_encode([
+    "success" => true,
+    "id" => $pdo->lastInsertId()
+]);

@@ -90,15 +90,14 @@ async function fetchActivities() {
       const bank = bankById[t.bankid]
       const sub = subById[t.subcategoryid]
 
-      const rawDate = t.created_at || t.date || t.timestamp || null
 
       return {
         id: t.id,
         name: t.name,
         amount: Number(t.amount),
-        account: bank ? bank.name : "Unbekanntes Konto",
+        account: bank ? bank.name : "UnbekanntesKonto",
         category: sub ? sub.name : "Ohne Kategorie",
-        date: rawDate
+        description: t.description
       }
     })
   } catch (err) {
@@ -218,7 +217,7 @@ onBeforeUnmount(() => {
                         </p>
 
                         <p class="text-xs text-gray-500 mt-1">
-                            {{ formatDate(activity.date) }}
+                            {{ activity.description }}
                         </p>
                     </div>
 

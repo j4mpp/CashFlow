@@ -10,10 +10,10 @@ const banks = ref([])
 const loadingBanks = ref(true)
 const editingBankId = ref(null)
 
-const newBankType = ref("")
 const newAccountName = ref("")
 const newAccountIban = ref("")
 const newAccountBalance = ref("")
+const newBankLogoFile = ref(null)
 
 /* =========================
    FETCH BANKS
@@ -41,16 +41,21 @@ async function fetchBanks() {
 ========================= */
 
 function openAddModal() {
-    newBankType.value = ""
     newAccountName.value = ""
     newAccountIban.value = ""
     newAccountBalance.value = ""
+    newBankLogoFile.value = null
 
     document.getElementById("addAccountModal").classList.remove("hidden")
 }
 
 function closeAddModal() {
     document.getElementById("addAccountModal").classList.add("hidden")
+}
+
+function onNewBankLogoChange(event) {
+    const files = event?.target?.files
+    newBankLogoFile.value = files && files[0] ? files[0] : null
 }
 
 function openAccountModal(balanceId, accountName) {
@@ -66,8 +71,7 @@ function closeAccountModal() {
 }
 
 async function saveNewAccount() {
-    if (!newBankType.value ||
-        !newAccountName.value ||
+    if (!newAccountName.value ||
         !newAccountIban.value ||
         !newAccountBalance.value) {
         alert("Bitte alle Felder korrekt ausfüllen.")
@@ -81,16 +85,21 @@ async function saveNewAccount() {
     }
 
     try {
+        const formData = new FormData()
+        formData.append("userid", userid)
+        formData.append("name", newAccountName.value)
+        formData.append("iban", newAccountIban.value)
+        formData.append("amount", String(parseFloat(newAccountBalance.value)))
+        // bankfirma ist optional, hier leer
+        formData.append("bankfirma", "")
+
+        if (newBankLogoFile.value) {
+            formData.append("logo", newBankLogoFile.value)
+        }
+
         await fetch("http://localhost:8000/banks/create.php", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                userid,
-                name: newAccountName.value,
-                iban: newAccountIban.value,
-                amount: parseFloat(newAccountBalance.value),
-                bankfirma: newBankType.value
-            })
+            body: formData
         })
 
         closeAddModal()
@@ -160,10 +169,11 @@ function formatBalance(amount) {
 }
 
 function getBankIcon(type) {
-    if (type === "mastercard") return "/img/mc_symbol.svg"
-    if (type === "paypal") return "/img/paypal_icon.svg"
-    if (type === "revolut") return "/img/revolut_icon.svg"
-    return "/img/mc_symbol.svg"
+    const userid = localStorage.getItem("userid")
+    if (!userid) {
+        return "/banks/logo.php"
+    }
+    return `http://localhost:8000/banks/logo.php?userid=${userid}&bankid=${type}`
 }
 
 onMounted(fetchBanks)
@@ -183,7 +193,7 @@ onMounted(fetchBanks)
             <div v-for="bank in banks" :key="bank.id">
 
                 <BankAccountCard :accountName="bank.name" :accountOwner="'CashFlow User'"
-                    :icon="getBankIcon(bank.bankfirma)" :balance="formatBalance(bank.amount)"
+                    :icon="getBankIcon(bank.id)" :balance="formatBalance(bank.amount)"
                     :balanceId="'balance-' + bank.id" :iban="bank.iban" @edit-bank="startEdit(bank)" />
 
                 <!-- EDIT PANEL -->
@@ -193,13 +203,7 @@ onMounted(fetchBanks)
 
                     <input v-model="bank._editIban" class="w-full mb-2 border px-3 py-2 rounded-xl" />
 
-                    <input v-model="bank._editAmount" type="number" class="w-full mb-2 border px-3 py-2 rounded-xl" />
-
-                    <select v-model="bank._editType" class="w-full mb-4 border px-3 py-2 rounded-xl">
-                        <option value="mastercard">Mastercard</option>
-                        <option value="paypal">PayPal</option>
-                        <option value="revolut">Revolut</option>
-                    </select>
+                    <input v-model="bank._editAmount" type="number" class="w-full mb-4 border px-3 py-2 rounded-xl" />
 
                     <div class="flex gap-4">
                         <button class="text-red-600" @click="deleteBank(bank)">
@@ -232,14 +236,6 @@ onMounted(fetchBanks)
                 <h2 class="text-2xl font-semibold">Neues Bankkonto hinzufügen</h2>
             </span>
 
-            <label class="block text-sm mb-1">Bank / Konto</label>
-            <select v-model="newBankType" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
-                <option value="">Bitte wählen</option>
-                <option value="mastercard">Mastercard</option>
-                <option value="paypal">PayPal</option>
-                <option value="revolut">Revolut</option>
-            </select>
-
             <label class="block text-sm mb-1">Kontoname / Nummer</label>
             <input v-model="newAccountName" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4"
                 placeholder="z.B. Girokonto #1234" />
@@ -251,6 +247,11 @@ onMounted(fetchBanks)
             <label class="block text-sm mb-1">Aktueller Kontostand (€)</label>
             <input v-model="newAccountBalance" type="number" step="0.01"
                 class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
+
+            <label class="block text-sm mb-1">Bank-Logo (optional)</label>
+            <input type="file" accept="image/*"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6"
+                @change="onNewBankLogoChange" />
 
             <div class="flex justify-end gap-4">
                 <button @click="closeAddModal" class="px-4 py-2 rounded-lg border border-gray-300">

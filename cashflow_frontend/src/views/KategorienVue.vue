@@ -9,6 +9,7 @@ import { ref, computed, onMounted, watch } from "vue"
 
 const categories = ref([])
 const loading = ref(true)
+const banks = ref([])
 
 /* =========================
    MOCK FALLBACK
@@ -134,17 +135,21 @@ async function fetchCategories() {
       return
     }
 
-    const [catRes, subRes, txRes] = await Promise.all([
+    const [catRes, subRes, txRes, banksRes] = await Promise.all([
       fetch(`http://localhost:8000/categories/get.php?userid=${userid}`),
       fetch(`http://localhost:8000/subcategories/get.php?userid=${userid}`),
-      fetch(`http://localhost:8000/transactions/get.php?userid=${userid}`)
+      fetch(`http://localhost:8000/transactions/get.php?userid=${userid}`),
+      fetch(`http://localhost:8000/banks/get.php?userid=${userid}`)
     ])
 
-    const [cats, subs, txs] = await Promise.all([
+    const [cats, subs, txs, fetchedBanks] = await Promise.all([
       catRes.json(),
       subRes.json(),
-      txRes.json()
+      txRes.json(),
+      banksRes.json()
     ])
+
+    banks.value = Array.isArray(fetchedBanks) ? fetchedBanks : []
 
     const txBySubId = (Array.isArray(txs) ? txs : []).reduce((acc, t) => {
       const key = String(t.subcategoryid)
@@ -184,6 +189,99 @@ async function fetchCategories() {
 onMounted(() => {
   fetchCategories()
 })
+
+/* =========================
+   ENTRY MODAL (NEW TRANSACTION)
+========================= */
+
+const showEntryModal = ref(false)
+const creatingEntry = ref(false)
+const activeSubcategoryId = ref("")
+
+const entryName = ref("")
+const entryDescription = ref("")
+const entryAmount = ref("")
+const entryBankId = ref("")
+const entryDate = ref(new Date().toISOString().slice(0, 10)) // YYYY-MM-DD
+
+function openEntryModal(sub) {
+  activeSubcategoryId.value = String(sub.id)
+  entryName.value = ""
+  entryDescription.value = ""
+  entryAmount.value = ""
+  entryBankId.value = ""
+  entryDate.value = new Date().toISOString().slice(0, 10)
+  showEntryModal.value = true
+}
+
+function closeEntryModal() {
+  showEntryModal.value = false
+  activeSubcategoryId.value = ""
+}
+
+async function saveEntry() {
+  const userid = localStorage.getItem("userid")
+  if (!userid) return alert("Nicht eingeloggt.")
+
+  const name = entryName.value.trim()
+  const description = entryDescription.value.trim()
+  const amount = Number(entryAmount.value)
+  const bankid = entryBankId.value
+  const subcategoryid = activeSubcategoryId.value
+  const date = entryDate.value
+
+  if (!subcategoryid) return alert("Unterkategorie fehlt.")
+  if (!name) return alert("Bitte Name eingeben.")
+  if (!bankid) return alert("Bitte Konto wählen.")
+  if (!Number.isFinite(amount)) return alert("Bitte gültigen Betrag eingeben.")
+  if (!date) return alert("Bitte Datum wählen.")
+
+  creatingEntry.value = true
+  try {
+    await fetch("http://localhost:8000/transactions/create.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userid,
+        subcategoryid,
+        name,
+        description,
+        amount,
+        bankid,
+        date
+      })
+    })
+
+    // Bank-Balance aktualisieren: neuer Betrag = alter Betrag + Transaktionsbetrag
+    const bank = banks.value.find(b => String(b.id) === String(bankid))
+    if (bank) {
+      const current = Number(bank.amount)
+      const nextAmount = (Number.isFinite(current) ? current : 0) + amount
+
+      await fetch("http://localhost:8000/banks/update.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userid,
+          id: bank.id,
+          name: bank.name,
+          iban: bank.iban,
+          amount: nextAmount,
+          bankfirma: bank.bankfirma
+        })
+      })
+    }
+
+    closeEntryModal()
+    loading.value = true
+    await fetchCategories()
+  } catch (err) {
+    console.log("Fehler beim Speichern:", err)
+    alert("Fehler beim Speichern.")
+  } finally {
+    creatingEntry.value = false
+  }
+}
 
 /* =========================
    MODAL STATE
@@ -264,7 +362,6 @@ async function saveCategory() {
 
     closeModal()
 
-    // 🔥 Danach neu laden aus DB
     await fetchCategories()
 
   } catch (err) {
@@ -302,7 +399,6 @@ const mainCategories = computed(() => categories.value)
 
           <button @click="toggleCategory(cat)"
             class="w-full flex items-center justify-between px-5 py-4 text-left font-medium text-lg">
-            <!-- 🖊️ EDIT ICON -->
             <ion-icon name="pencil" class="mr-3" @click.stop="startEditCategory(cat)"></ion-icon>
 
             <!-- Name oder Input -->
@@ -360,6 +456,16 @@ const mainCategories = computed(() => categories.value)
               </button>
 
               <div v-if="sub.open" class="px-4 pb-4">
+                <div class="pt-3">
+                  <button @click.stop="openEntryModal(sub)"
+                    class="w-full rounded-xl border border-gray-200 bg-white/70 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 transition">
+                    <span class="inline-flex items-center gap-2">
+                      <ion-icon name="add-outline"></ion-icon>
+                      Eintrag hinzufügen
+                    </span>
+                  </button>
+                </div>
+
                 <div v-if="sub.entries?.length === 0" class="text-sm text-gray-500">
                   Noch keine Einträge.
                 </div>
@@ -373,6 +479,9 @@ const mainCategories = computed(() => categories.value)
                       </div>
                       <div v-if="e.description" class="text-xs text-gray-500 mt-1">
                         {{ e.description }}
+                      </div>
+                      <div v-if="e.date" class="text-xs text-gray-400 mt-1">
+                        {{ new Date(e.date).toLocaleDateString("de-DE") }}
                       </div>
                     </div>
 
@@ -435,6 +544,54 @@ const mainCategories = computed(() => categories.value)
             </button>
 
             <button @click="saveCategory" class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">
+              Speichern
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ENTRY MODAL -->
+      <div v-if="showEntryModal"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+          <span class="h-20 pb-3 flex items-center gap-3">
+            <ion-icon name="add-circle" class="w-8 h-8 text-teal-400"></ion-icon>
+            <h2 class="text-2xl font-semibold">
+              Neuer Eintrag
+            </h2>
+          </span>
+
+          <label class="block text-sm mb-1">Name</label>
+          <input v-model="entryName" placeholder="z.B. Billa Einkauf"
+            class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+          <label class="block text-sm mb-1">Beschreibung (optional)</label>
+          <input v-model="entryDescription" placeholder="z.B. Wochenendeinkauf"
+            class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+          <label class="block text-sm mb-1">Betrag (€)</label>
+          <input v-model="entryAmount" type="number" step="0.01" placeholder="-45.80"
+            class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+          <label class="block text-sm mb-1">Konto</label>
+          <select v-model="entryBankId" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+            <option value="">Bitte wählen</option>
+            <option v-for="b in banks" :key="b.id" :value="b.id">
+              {{ b.name }}
+            </option>
+          </select>
+
+          <label class="block text-sm mb-1">Datum</label>
+          <input v-model="entryDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
+
+          <div class="flex justify-end gap-3 pt-2">
+            <button @click="closeEntryModal" class="px-4 py-2 border rounded-xl" :disabled="creatingEntry">
+              Abbrechen
+            </button>
+
+            <button @click="saveEntry"
+              class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl disabled:opacity-50"
+              :disabled="creatingEntry">
               Speichern
             </button>
           </div>

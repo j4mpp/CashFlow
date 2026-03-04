@@ -127,6 +127,7 @@ const txDescription = ref("")
 const txAmount = ref("")
 const txBankId = ref("")
 const txSubcategoryId = ref("")
+const txDate = ref(new Date().toISOString().slice(0, 10)) // YYYY-MM-DD
 
 function openModal() {
   showModal.value = true
@@ -139,6 +140,7 @@ function closeModal() {
   txAmount.value = ""
   txBankId.value = ""
   txSubcategoryId.value = ""
+  txDate.value = new Date().toISOString().slice(0, 10)
 }
 
 async function saveTransaction() {
@@ -150,11 +152,13 @@ async function saveTransaction() {
   const amount = Number(txAmount.value)
   const bankid = txBankId.value
   const subcategoryid = txSubcategoryId.value
+  const date = txDate.value
 
   if (!name) return alert("Bitte Name eingeben.")
   if (!bankid) return alert("Bitte Konto wählen.")
   if (!subcategoryid) return alert("Bitte Kategorie wählen.")
   if (!Number.isFinite(amount)) return alert("Bitte gültigen Betrag eingeben.")
+  if (!date) return alert("Bitte Datum wählen.")
 
   creating.value = true
   try {
@@ -167,7 +171,8 @@ async function saveTransaction() {
         name,
         description,
         amount,
-        bankid
+        bankid,
+        date
       })
     })
 
@@ -316,7 +321,7 @@ onBeforeUnmount(() => {
                             </p>
 
                             <p v-if="activity.date" class="text-xs text-gray-400 mt-1">
-                                {{ formatDate(activity.date) }}
+                                {{new Date(activity.date).toLocaleDateString("de-DE") }}
                             </p>
                         </div>
 
@@ -383,6 +388,10 @@ onBeforeUnmount(() => {
                         {{ s.name }}
                     </option>
                 </select>
+
+                <label class="block text-sm mb-1">Datum</label>
+                <input v-model="txDate" type="date"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
 
                 <div class="flex justify-end gap-3 pt-2">
                     <button @click="closeModal" class="px-4 py-2 border rounded-xl" :disabled="creating">

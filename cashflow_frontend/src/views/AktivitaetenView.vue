@@ -7,6 +7,8 @@ import { ref, computed, onMounted, onBeforeUnmount } from "vue"
 
 const activities = ref([])
 const loading = ref(true)
+const banks = ref([])
+const subcategories = ref([])
 
 /* =========================
    MOCK FALLBACK
@@ -72,32 +74,37 @@ async function fetchActivities() {
       fetch(`http://localhost:8000/subcategories/get.php?userid=${userid}`)
     ])
 
-    const [txs, banks, subs] = await Promise.all([
+    const [txs, fetchedBanks, fetchedSubs] = await Promise.all([
       txRes.json(),
       banksRes.json(),
       subsRes.json()
     ])
 
+    banks.value = Array.isArray(fetchedBanks) ? fetchedBanks : []
+    subcategories.value = Array.isArray(fetchedSubs) ? fetchedSubs : []
+
     const bankById = Object.fromEntries(
-      (banks || []).map(b => [b.id, b])
+      (fetchedBanks || []).map(b => [b.id, b])
     )
 
     const subById = Object.fromEntries(
-      (subs || []).map(s => [s.id, s])
+      (fetchedSubs || []).map(s => [s.id, s])
     )
 
     activities.value = (txs || []).map(t => {
       const bank = bankById[t.bankid]
       const sub = subById[t.subcategoryid]
 
+      const rawDate = t.created_at || t.date || t.timestamp || null
 
       return {
         id: t.id,
         name: t.name,
         amount: Number(t.amount),
-        account: bank ? bank.name : "UnbekanntesKonto",
+        account: bank ? bank.name : "Unbekanntes Konto",
         category: sub ? sub.name : "Ohne Kategorie",
-        description: t.description
+        description: t.description,
+        date: rawDate
       }
     })
   } catch (err) {
@@ -105,6 +112,93 @@ async function fetchActivities() {
     activities.value = mockActivities
   } finally {
     loading.value = false
+  }
+}
+
+/* =========================
+   MODAL STATE (CREATE)
+========================= */
+
+const showModal = ref(false)
+const creating = ref(false)
+
+const txName = ref("")
+const txDescription = ref("")
+const txAmount = ref("")
+const txBankId = ref("")
+const txSubcategoryId = ref("")
+
+function openModal() {
+  showModal.value = true
+}
+
+function closeModal() {
+  showModal.value = false
+  txName.value = ""
+  txDescription.value = ""
+  txAmount.value = ""
+  txBankId.value = ""
+  txSubcategoryId.value = ""
+}
+
+async function saveTransaction() {
+  const userid = localStorage.getItem("userid")
+  if (!userid) return alert("Nicht eingeloggt.")
+
+  const name = txName.value.trim()
+  const description = txDescription.value.trim()
+  const amount = Number(txAmount.value)
+  const bankid = txBankId.value
+  const subcategoryid = txSubcategoryId.value
+
+  if (!name) return alert("Bitte Name eingeben.")
+  if (!bankid) return alert("Bitte Konto wählen.")
+  if (!subcategoryid) return alert("Bitte Kategorie wählen.")
+  if (!Number.isFinite(amount)) return alert("Bitte gültigen Betrag eingeben.")
+
+  creating.value = true
+  try {
+    await fetch("http://localhost:8000/transactions/create.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userid,
+        subcategoryid,
+        name,
+        description,
+        amount,
+        bankid
+      })
+    })
+
+    // Kontostand aktualisieren: neuer Betrag = alter Betrag + Transaktionsbetrag
+    const bank = banks.value.find(b => String(b.id) === String(bankid))
+    if (bank) {
+      const current = Number(bank.amount)
+      const nextAmount = (Number.isFinite(current) ? current : 0) + amount
+
+      await fetch("http://localhost:8000/banks/update.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userid,
+          id: bank.id,
+          name: bank.name,
+          iban: bank.iban,
+          amount: nextAmount,
+          bankfirma: bank.bankfirma
+        })
+      })
+    }
+
+    closeModal()
+    loading.value = true
+    await fetchActivities()
+  } catch (err) {
+    console.log("Fehler beim Speichern:", err)
+    alert("Fehler beim Speichern.")
+  } finally {
+    creating.value = false
   }
 }
 
@@ -202,32 +296,37 @@ onBeforeUnmount(() => {
                 Aktivitäten werden geladen...
             </div>
 
-            <div v-for="activity in filteredActivities" :key="activity.id" v-else
-                class="rounded-2xl p-5 bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl hover:scale-[1.01] transition duration-200">
-                <div class="flex items-center justify-between">
+            <template v-else>
+                <div v-for="activity in filteredActivities" :key="activity.id"
+                    class="rounded-2xl p-5 bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl hover:scale-[1.01] transition duration-200">
+                    <div class="flex items-center justify-between">
 
-                    <!-- LEFT -->
-                    <div>
-                        <p class="font-semibold text-lg">
-                            {{ activity.name }}
-                        </p>
+                        <!-- LEFT -->
+                        <div>
+                            <p class="font-semibold text-lg">
+                                {{ activity.name }}
+                            </p>
 
-                        <p class="text-sm text-gray-600">
-                            {{ activity.account }} • {{ activity.category }}
-                        </p>
+                            <p class="text-sm text-gray-600">
+                                {{ activity.account }} • {{ activity.category }}
+                            </p>
 
-                        <p class="text-xs text-gray-500 mt-1">
-                            {{ activity.description }}
-                        </p>
-                    </div>
+                            <p v-if="activity.description" class="text-xs text-gray-500 mt-1">
+                                {{ activity.description }}
+                            </p>
 
-                    <!-- RIGHT -->
-                    <div :class="[
-                        'text-xl font-semibold',
-                        activity.amount < 0 ? 'text-red-500' : 'text-green-600'
-                    ]">
-                        {{ activity.amount < 0 ? "-" : "+" }} {{ Math.abs(activity.amount).toLocaleString("de-DE") }} €
-                            </div>
+                            <p v-if="activity.date" class="text-xs text-gray-400 mt-1">
+                                {{ formatDate(activity.date) }}
+                            </p>
+                        </div>
+
+                        <!-- RIGHT -->
+                        <div :class="[
+                            'text-xl font-semibold',
+                            activity.amount < 0 ? 'text-red-500' : 'text-green-600'
+                        ]">
+                            {{ activity.amount < 0 ? "-" : "+" }} {{ Math.abs(activity.amount).toLocaleString("de-DE") }} €
+                        </div>
 
                     </div>
                 </div>
@@ -236,8 +335,67 @@ onBeforeUnmount(() => {
                 <div v-if="filteredActivities.length === 0" class="text-center text-gray-500 py-10">
                     Keine Aktivitäten gefunden.
                 </div>
-
-            </div>
+            </template>
 
         </div>
+
+        <!-- FLOAT BUTTON -->
+        <button @click="openModal"
+            class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl transition hover:scale-110">
+            <ion-icon name="add-outline"></ion-icon>
+        </button>
+
+        <!-- MODAL -->
+        <div v-if="showModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+
+                <span class="h-20 pb-3 flex items-center gap-3">
+                    <ion-icon name="add-circle" class="w-8 h-8 text-teal-400"></ion-icon>
+                    <h2 class="text-2xl font-semibold">
+                        Neue Aktivität
+                    </h2>
+                </span>
+
+                <label class="block text-sm mb-1">Name</label>
+                <input v-model="txName" placeholder="z.B. Billa Einkauf"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+                <label class="block text-sm mb-1">Beschreibung (optional)</label>
+                <input v-model="txDescription" placeholder="z.B. Wochenendeinkauf"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+                <label class="block text-sm mb-1">Betrag (€)</label>
+                <input v-model="txAmount" type="number" step="0.01" placeholder="-45.80"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+                <label class="block text-sm mb-1">Konto</label>
+                <select v-model="txBankId" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+                    <option value="">Bitte wählen</option>
+                    <option v-for="b in banks" :key="b.id" :value="b.id">
+                        {{ b.name }}
+                    </option>
+                </select>
+
+                <label class="block text-sm mb-1">Kategorie</label>
+                <select v-model="txSubcategoryId" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6">
+                    <option value="">Bitte wählen</option>
+                    <option v-for="s in subcategories" :key="s.id" :value="s.id">
+                        {{ s.name }}
+                    </option>
+                </select>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button @click="closeModal" class="px-4 py-2 border rounded-xl" :disabled="creating">
+                        Abbrechen
+                    </button>
+
+                    <button @click="saveTransaction"
+                        class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl disabled:opacity-50"
+                        :disabled="creating">
+                        Speichern
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </template>

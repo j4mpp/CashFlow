@@ -134,16 +134,24 @@ async function fetchCategories() {
       return
     }
 
-    const catRes = await fetch(
-      `http://localhost:8000/categories/get.php?userid=${userid}`
-    )
+    const [catRes, subRes, txRes] = await Promise.all([
+      fetch(`http://localhost:8000/categories/get.php?userid=${userid}`),
+      fetch(`http://localhost:8000/subcategories/get.php?userid=${userid}`),
+      fetch(`http://localhost:8000/transactions/get.php?userid=${userid}`)
+    ])
 
-    const subRes = await fetch(
-      `http://localhost:8000/subcategories/get.php?userid=${userid}`
-    )
+    const [cats, subs, txs] = await Promise.all([
+      catRes.json(),
+      subRes.json(),
+      txRes.json()
+    ])
 
-    const cats = await catRes.json()
-    const subs = await subRes.json()
+    const txBySubId = (Array.isArray(txs) ? txs : []).reduce((acc, t) => {
+      const key = String(t.subcategoryid)
+      if (!acc[key]) acc[key] = []
+      acc[key].push(t)
+      return acc
+    }, {})
 
     // Kategorien Struktur aufbauen
     const structured = cats.map(cat => ({
@@ -154,7 +162,11 @@ async function fetchCategories() {
         .map(sub => ({
           ...sub,
           open: false,
-          entries: []
+          entries: (txBySubId[String(sub.id)] || []).slice().sort((a, b) => {
+            const ad = a.created_at || a.date || a.timestamp || 0
+            const bd = b.created_at || b.date || b.timestamp || 0
+            return new Date(bd) - new Date(ad)
+          })
         }))
     }))
 
@@ -347,8 +359,31 @@ const mainCategories = computed(() => categories.value)
                 <ion-icon :name="sub.open ? 'chevron-up-outline' : 'chevron-down-outline'" />
               </button>
 
-              <div v-if="sub.open" class="px-4 pb-4 text-sm text-gray-500">
-                Noch keine Einträge.
+              <div v-if="sub.open" class="px-4 pb-4">
+                <div v-if="sub.entries?.length === 0" class="text-sm text-gray-500">
+                  Noch keine Einträge.
+                </div>
+
+                <div v-else class="mt-2 space-y-2">
+                  <div v-for="e in sub.entries" :key="e.id"
+                    class="flex items-start justify-between rounded-xl bg-white/70 border border-gray-200 px-4 py-3">
+                    <div class="min-w-0">
+                      <div class="font-medium text-gray-900 truncate">
+                        {{ e.name }}
+                      </div>
+                      <div v-if="e.description" class="text-xs text-gray-500 mt-1">
+                        {{ e.description }}
+                      </div>
+                    </div>
+
+                    <div :class="[
+                      'ml-4 shrink-0 font-semibold',
+                      Number(e.amount) < 0 ? 'text-red-500' : 'text-green-600'
+                    ]">
+                      {{ Number(e.amount) < 0 ? "-" : "+" }} {{ Math.abs(Number(e.amount)).toLocaleString("de-DE") }} €
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

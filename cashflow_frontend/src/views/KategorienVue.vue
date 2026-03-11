@@ -294,7 +294,16 @@ const catName = ref("")
 const catType = ref("main")
 const parentCategory = ref("")
 
-function openModal() {
+function openModalMain() {
+  catType.value = "main"
+  catName.value = ""
+  showModal.value = true
+}
+
+function openModalSub(cat) {
+  catType.value = "sub"
+  catName.value = ""
+  parentCategory.value = cat.id
   showModal.value = true
 }
 
@@ -426,7 +435,7 @@ const mainCategories = computed(() => categories.value)
 
             <!-- NACH dem v-for der Subcategories, aber noch innerhalb von div v-if="cat.open" -->
 
-            <button @click.stop="openModal(); catType = 'sub'; parentCategory = cat.id"
+            <button @click.stop="openModalSub(cat); catType = 'sub'; parentCategory = cat.id"
               class="mt-3 w-full rounded-xl border border-gray-200 bg-white/70 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 transition">
               <span class="inline-flex items-center gap-2">
                 <ion-icon name="add-outline"></ion-icon>
@@ -434,9 +443,6 @@ const mainCategories = computed(() => categories.value)
               </span>
             </button>
 
-            <div v-if="cat.subcategories.length === 0" class="text-sm text-gray-400">
-              Noch keine Unterkategorien.
-            </div>
 
             <!-- SUBCATEGORIES -->
             <div v-for="sub in cat.subcategories" :key="sub.id"
@@ -511,50 +517,29 @@ const mainCategories = computed(() => categories.value)
         </div>
 
         <!-- FLOAT BUTTON -->
-        <button @click="openModal"
+        <button @click="openModalMain"
           class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl transition hover:scale-110">
           <ion-icon name="add-outline"></ion-icon>
         </button>
 
         <!-- MODAL -->
         <div v-if="showModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-
-          <div class="w-11/12 max-w-md p-6 rounded-2xl
-                    bg-white backdrop-blur-xl
-                    border border-white/40 shadow-xl">
-
+          <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
 
             <span class="h-20 pb-3 flex items-center gap-3">
               <ion-icon name="duplicate" class="w-8 h-8 text-teal-400"></ion-icon>
               <h1 class="text-2xl font-semibold">
-                Neue Kategorie hinzufügen
+                {{ catType === 'main' ? 'Neue Hauptkategorie' : 'Neue Unterkategorie' }}
               </h1>
             </span>
-
-
-            <select v-model="catType" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
-              <option value="main">Hauptkategorie</option>
-              <option value="sub">Unterkategorie</option>
-            </select>
 
             <input v-model="catName" placeholder="Name"
               class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
 
-            <select v-if="catType === 'sub'" v-model="parentCategory"
-              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
-              <option v-for="cat in mainCategories" :key="cat.id" :value="cat.id">
-                {{ cat.name }}
-              </option>
-            </select>
-
             <div class="flex justify-end gap-3 pt-4">
-              <button @click="closeModal" class="px-4 py-2 border rounded-xl">
-                Abbrechen
-              </button>
-
-              <button @click="saveCategory" class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">
-                Speichern
-              </button>
+              <button @click="closeModal" class="px-4 py-2 border rounded-xl">Abbrechen</button>
+              <button @click="saveCategory"
+                class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">Speichern</button>
             </div>
           </div>
         </div>

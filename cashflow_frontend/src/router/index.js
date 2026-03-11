@@ -6,44 +6,26 @@ import LoginView from '@/views/LoginView.vue'
 import AktivitaetenView from '@/views/AktivitaetenView.vue'
 
 const routes = [
-  {
-    path: '/',
-    name: 'dashboard',
-    component: DashBoard
-  },
-  {
-    path: '/kategorien',
-    name: 'kategorien',
-    component: KategorienVue
-  },
-  {
-    path: '/analysen',
-    name: 'analysen',
-    component: AnalysenVue
-  },
-  {
-    path: '/activity',
-    name: 'activity',
-    component: AktivitaetenView,
-  },
-  {
-    path: "/login",
-    component: LoginView,
-    meta: { layout: "auth" }
-  },
-  {
-    path: '/about',
-    name: 'about',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
-  }
+  { path: '/', name: 'dashboard', component: DashBoard },
+  { path: '/kategorien', name: 'kategorien', component: KategorienVue },
+  { path: '/analysen', name: 'analysen', component: AnalysenVue },
+  { path: '/activity', name: 'activity', component: AktivitaetenView },
+  { path: '/login', name: 'login', component: LoginView },
+  { path: '/about', name: 'about', component: () => import('../views/AboutView.vue') }
 ]
 
 const router = createRouter({
   history: createWebHashHistory(),
   routes
+})
+
+router.beforeEach((to, from, next) => {
+  const userid = localStorage.getItem("userid")
+  if (!userid && to.name !== "login") {
+    next({ name: "login" })
+  } else {
+    next()
+  }
 })
 
 export default router

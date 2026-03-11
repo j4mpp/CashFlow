@@ -421,7 +421,18 @@ const mainCategories = computed(() => categories.value)
             <ion-icon :name="cat.open ? 'chevron-up-outline' : 'chevron-down-outline'" />
           </button>
 
+
           <div v-if="cat.open" class="px-6 pb-6">
+
+            <!-- NACH dem v-for der Subcategories, aber noch innerhalb von div v-if="cat.open" -->
+
+            <button @click.stop="openModal(); catType = 'sub'; parentCategory = cat.id"
+              class="mt-3 w-full rounded-xl border border-gray-200 bg-white/70 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 transition">
+              <span class="inline-flex items-center gap-2">
+                <ion-icon name="add-outline"></ion-icon>
+                Unterkategorie hinzufügen
+              </span>
+            </button>
 
             <div v-if="cat.subcategories.length === 0" class="text-sm text-gray-400">
               Noch keine Unterkategorien.
@@ -466,11 +477,8 @@ const mainCategories = computed(() => categories.value)
                   </button>
                 </div>
 
-                <div v-if="sub.entries?.length === 0" class="text-sm text-gray-500">
-                  Noch keine Einträge.
-                </div>
 
-                <div v-else class="mt-2 space-y-2">
+                <div class="mt-2 space-y-2">
                   <div v-for="e in sub.entries" :key="e.id"
                     class="flex items-start justify-between rounded-xl bg-white/70 border border-gray-200 px-4 py-3">
                     <div class="min-w-0">
@@ -490,113 +498,114 @@ const mainCategories = computed(() => categories.value)
                       Number(e.amount) < 0 ? 'text-red-500' : 'text-green-600'
                     ]">
                       {{ Number(e.amount) < 0 ? "-" : "+" }} {{ Math.abs(Number(e.amount)).toLocaleString("de-DE") }} €
+                        </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
 
+            </div>
           </div>
+
+
         </div>
 
+        <!-- FLOAT BUTTON -->
+        <button @click="openModal"
+          class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl transition hover:scale-110">
+          <ion-icon name="add-outline"></ion-icon>
+        </button>
 
-      </div>
+        <!-- MODAL -->
+        <div v-if="showModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
 
-      <!-- FLOAT BUTTON -->
-      <button @click="openModal"
-        class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl transition hover:scale-110">
-        <ion-icon name="add-outline"></ion-icon>
-      </button>
-
-      <!-- MODAL -->
-      <div v-if="showModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-
-        <div class="w-11/12 max-w-md p-6 rounded-2xl
+          <div class="w-11/12 max-w-md p-6 rounded-2xl
                     bg-white backdrop-blur-xl
                     border border-white/40 shadow-xl">
 
 
-          <span class="h-20 pb-3 flex items-center gap-3">
-            <ion-icon name="duplicate" class="w-8 h-8 text-teal-400"></ion-icon>
-            <h1 class="text-2xl font-semibold">
-              Neue Kategorie hinzufügen
-            </h1>
-          </span>
+            <span class="h-20 pb-3 flex items-center gap-3">
+              <ion-icon name="duplicate" class="w-8 h-8 text-teal-400"></ion-icon>
+              <h1 class="text-2xl font-semibold">
+                Neue Kategorie hinzufügen
+              </h1>
+            </span>
 
 
-          <select v-model="catType" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
-            <option value="main">Hauptkategorie</option>
-            <option value="sub">Unterkategorie</option>
-          </select>
+            <select v-model="catType" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+              <option value="main">Hauptkategorie</option>
+              <option value="sub">Unterkategorie</option>
+            </select>
 
-          <input v-model="catName" placeholder="Name" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+            <input v-model="catName" placeholder="Name"
+              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
 
-          <select v-if="catType === 'sub'" v-model="parentCategory"
-            class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
-            <option v-for="cat in mainCategories" :key="cat.id" :value="cat.id">
-              {{ cat.name }}
-            </option>
-          </select>
+            <select v-if="catType === 'sub'" v-model="parentCategory"
+              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+              <option v-for="cat in mainCategories" :key="cat.id" :value="cat.id">
+                {{ cat.name }}
+              </option>
+            </select>
 
-          <div class="flex justify-end gap-3 pt-4">
-            <button @click="closeModal" class="px-4 py-2 border rounded-xl">
-              Abbrechen
-            </button>
+            <div class="flex justify-end gap-3 pt-4">
+              <button @click="closeModal" class="px-4 py-2 border rounded-xl">
+                Abbrechen
+              </button>
 
-            <button @click="saveCategory" class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">
-              Speichern
-            </button>
+              <button @click="saveCategory" class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">
+                Speichern
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- ENTRY MODAL -->
-      <div v-if="showEntryModal"
-        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
-          <span class="h-20 pb-3 flex items-center gap-3">
-            <ion-icon name="add-circle" class="w-8 h-8 text-teal-400"></ion-icon>
-            <h2 class="text-2xl font-semibold">
-              Neuer Eintrag
-            </h2>
-          </span>
+        <!-- ENTRY MODAL -->
+        <div v-if="showEntryModal"
+          class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+            <span class="h-20 pb-3 flex items-center gap-3">
+              <ion-icon name="add-circle" class="w-8 h-8 text-teal-400"></ion-icon>
+              <h2 class="text-2xl font-semibold">
+                Neuer Eintrag
+              </h2>
+            </span>
 
-          <label class="block text-sm mb-1">Name</label>
-          <input v-model="entryName" placeholder="z.B. Billa Einkauf"
-            class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+            <label class="block text-sm mb-1">Name</label>
+            <input v-model="entryName" placeholder="z.B. Billa Einkauf"
+              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
 
-          <label class="block text-sm mb-1">Beschreibung (optional)</label>
-          <input v-model="entryDescription" placeholder="z.B. Wochenendeinkauf"
-            class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+            <label class="block text-sm mb-1">Beschreibung (optional)</label>
+            <input v-model="entryDescription" placeholder="z.B. Wochenendeinkauf"
+              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
 
-          <label class="block text-sm mb-1">Betrag (€)</label>
-          <input v-model="entryAmount" type="number" step="0.01" placeholder="-45.80"
-            class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+            <label class="block text-sm mb-1">Betrag (€)</label>
+            <input v-model="entryAmount" type="number" step="0.01" placeholder="-45.80"
+              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
 
-          <label class="block text-sm mb-1">Konto</label>
-          <select v-model="entryBankId" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
-            <option value="">Bitte wählen</option>
-            <option v-for="b in banks" :key="b.id" :value="b.id">
-              {{ b.name }}
-            </option>
-          </select>
+            <label class="block text-sm mb-1">Konto</label>
+            <select v-model="entryBankId" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+              <option value="">Bitte wählen</option>
+              <option v-for="b in banks" :key="b.id" :value="b.id">
+                {{ b.name }}
+              </option>
+            </select>
 
-          <label class="block text-sm mb-1">Datum</label>
-          <input v-model="entryDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
+            <label class="block text-sm mb-1">Datum</label>
+            <input v-model="entryDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
 
-          <div class="flex justify-end gap-3 pt-2">
-            <button @click="closeEntryModal" class="px-4 py-2 border rounded-xl" :disabled="creatingEntry">
-              Abbrechen
-            </button>
+            <div class="flex justify-end gap-3 pt-2">
+              <button @click="closeEntryModal" class="px-4 py-2 border rounded-xl" :disabled="creatingEntry">
+                Abbrechen
+              </button>
 
-            <button @click="saveEntry"
-              class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl disabled:opacity-50"
-              :disabled="creatingEntry">
-              Speichern
-            </button>
+              <button @click="saveEntry"
+                class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl disabled:opacity-50"
+                :disabled="creatingEntry">
+                Speichern
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
     </main>
   </div>

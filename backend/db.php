@@ -10,7 +10,7 @@ $db   = "cashflow";
 $user = "root";
 $pass = "rootpass";
 */
-$host = "10.0.108.44";
+$host = "10.0.108.50";
 $port = "3306";
 $db   = "cashflow";
 $user = "root";

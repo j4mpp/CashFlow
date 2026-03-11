@@ -5,12 +5,26 @@ import { useRouter } from "vue-router"
 const mobileOpen = ref(false)
 const username = ref(null)
 const router = useRouter()
+const showUserMenu = ref(false)
+const fileInput = ref(null)
+
+function triggerFileInput() {
+    fileInput.value.click()
+}
+
+function handleExcelImport(event) {
+    const file = event.target.files[0]
+    if (!file) return
+    console.log("Importierte Datei:", file.name)
+    // später die Verarbeitung einbauen
+}
 
 function closeMenu() {
     mobileOpen.value = false
 }
 
 function logout() {
+    showUserMenu.value = false
     localStorage.removeItem("userid")
     localStorage.removeItem("username")
     username.value = null
@@ -83,15 +97,42 @@ onMounted(() => {
         </nav>
 
         <!-- User -->
-        <div class="mt-auto p-5">
-            <router-link v-if="!username" to="/login" class="flex gap-3 items-center">
+        <div class="mt-auto p-5 relative">
+            <!-- Trigger -->
+            <div v-if="username" class="flex gap-3 items-center cursor-pointer" @click="showUserMenu = !showUserMenu">
+                <ion-icon name="person" class="w-6 h-6"></ion-icon>
+                <span class="font-semibold">{{ username }}</span>
+            </div>
+            <router-link v-else to="/login" class="flex gap-3 items-center">
                 <ion-icon name="person" class="w-6 h-6"></ion-icon>
                 <span class="font-semibold">User</span>
             </router-link>
 
-            <div v-else class="flex gap-3 items-center cursor-pointer" @click="logout">
-                <ion-icon name="person" class="w-6 h-6"></ion-icon>
-                <span class="font-semibold">{{ username }}</span>
+            <!-- Popup -->
+            <div v-if="showUserMenu"
+                class="absolute bottom-16 left-4 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                <button class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 text-left">
+                    <ion-icon name="person-outline" class="w-5 h-5"></ion-icon>
+                    <span>Profil</span>
+                </button>
+
+                <input ref="fileInput" type="file" accept=".xlsx,.xls,.csv" class="hidden"
+                    @change="handleExcelImport" />
+
+                <button @click="triggerFileInput"
+                    class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 text-left">
+                    <ion-icon name="cloud-upload-outline" class="w-5 h-5"></ion-icon>
+                    <span>Excel importieren</span>
+                </button>
+                <button class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 text-left">
+                    <ion-icon name="cloud-download-outline" class="w-5 h-5"></ion-icon>
+                    <span>Excel exportieren</span>
+                </button>
+                <button @click="logout"
+                    class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 text-left text-red-500">
+                    <ion-icon name="log-out-outline" class="w-5 h-5"></ion-icon>
+                    <span>Abmelden</span>
+                </button>
             </div>
         </div>
     </aside>

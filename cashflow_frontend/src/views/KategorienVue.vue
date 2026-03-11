@@ -327,6 +327,62 @@ function toggleSub(sub) {
 }
 
 /* =========================
+   EDIT ENTRY
+========================= */
+
+const showEditEntryModal = ref(false)
+const editingEntry = ref(null)
+
+function openEditEntryModal(e) {
+  editingEntry.value = { ...e }
+  showEditEntryModal.value = true
+}
+
+function closeEditEntryModal() {
+  showEditEntryModal.value = false
+  editingEntry.value = null
+}
+
+async function saveEditEntry() {
+  const userid = localStorage.getItem("userid")
+  const e = editingEntry.value
+
+  await fetch("http://localhost:8000/transactions/update.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userid,
+      id: e.id,
+      subcategoryid: e.subcategoryid,
+      name: e.name,
+      description: e.description,
+      amount: Number(e.amount),
+      bankid: e.bankid,
+      date: e.date
+    })
+  })
+
+  closeEditEntryModal()
+  loading.value = true
+  await fetchCategories()
+}
+
+async function deleteEntry(e) {
+  const userid = localStorage.getItem("userid")
+  if (!confirm("Eintrag wirklich löschen?")) return
+
+  await fetch("http://localhost:8000/transactions/delete.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userid, id: e.id })
+  })
+
+  closeEditEntryModal()
+  loading.value = true
+  await fetchCategories()
+}
+
+/* =========================
    SAVE CATEGORY
 ========================= */
 
@@ -487,29 +543,27 @@ const mainCategories = computed(() => categories.value)
                 <div class="mt-2 space-y-2">
                   <div v-for="e in sub.entries" :key="e.id"
                     class="flex items-start justify-between rounded-xl bg-white/70 border border-gray-200 px-4 py-3">
-                    <div class="min-w-0">
-                      <div class="font-medium text-gray-900 truncate">
-                        {{ e.name }}
-                      </div>
-                      <div v-if="e.description" class="text-xs text-gray-500 mt-1">
-                        {{ e.description }}
-                      </div>
+
+                    <!-- Stift -->
+                    <ion-icon name="pencil" class="mr-3 mt-1 cursor-pointer shrink-0"
+                      @click="openEditEntryModal(e)"></ion-icon>
+
+                    <div class="min-w-0 flex-1">
+                      <div class="font-medium text-gray-900 truncate">{{ e.name }}</div>
+                      <div v-if="e.description" class="text-xs text-gray-500 mt-1">{{ e.description }}</div>
                       <div v-if="e.date" class="text-xs text-gray-400 mt-1">
                         {{ new Date(e.date).toLocaleDateString("de-DE") }}
                       </div>
                     </div>
 
-                    <div :class="[
-                      'ml-4 shrink-0 font-semibold',
-                      Number(e.amount) < 0 ? 'text-red-500' : 'text-green-600'
-                    ]">
+                    <div
+                      :class="['ml-4 shrink-0 font-semibold', Number(e.amount) < 0 ? 'text-red-500' : 'text-green-600']">
                       {{ Number(e.amount) < 0 ? "-" : "+" }} {{ Math.abs(Number(e.amount)).toLocaleString("de-DE") }} €
                         </div>
                     </div>
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
 
@@ -588,6 +642,48 @@ const mainCategories = computed(() => categories.value)
                 :disabled="creatingEntry">
                 Speichern
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- EDIT ENTRY MODAL -->
+        <div v-if="showEditEntryModal"
+          class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+            <span class="h-20 pb-3 flex items-center gap-3">
+              <ion-icon name="pencil" class="w-8 h-8 text-teal-400"></ion-icon>
+              <h2 class="text-2xl font-semibold">Eintrag bearbeiten</h2>
+            </span>
+
+            <label class="block text-sm mb-1">Name</label>
+            <input v-model="editingEntry.name" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+            <label class="block text-sm mb-1">Beschreibung (optional)</label>
+            <input v-model="editingEntry.description" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+            <label class="block text-sm mb-1">Betrag (€)</label>
+            <input v-model="editingEntry.amount" type="number" step="0.01"
+              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+            <label class="block text-sm mb-1">Konto</label>
+            <select v-model="editingEntry.bankid" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+              <option v-for="b in banks" :key="b.id" :value="b.id">{{ b.name }}</option>
+            </select>
+
+            <label class="block text-sm mb-1">Datum</label>
+            <input v-model="editingEntry.date" type="date"
+              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
+
+            <div class="flex justify-between pt-2">
+              <button @click="deleteEntry(editingEntry)"
+                class="px-4 py-2 text-red-500 border border-red-200 rounded-xl hover:bg-red-50">
+                Löschen
+              </button>
+              <div class="flex gap-3">
+                <button @click="closeEditEntryModal" class="px-4 py-2 border rounded-xl">Abbrechen</button>
+                <button @click="saveEditEntry"
+                  class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">Speichern</button>
+              </div>
             </div>
           </div>
         </div>

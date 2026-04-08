@@ -164,6 +164,7 @@ function getBankIcon(type) {
 ========================= */
 
 onMounted(async () => {
+<<<<<<< HEAD
     try {
         await fetchBanks()
         await fetchTransactions()
@@ -173,6 +174,10 @@ onMounted(async () => {
         transactions.value = []
         loadingBanks.value = false
     }
+=======
+    await fetchBanks()
+    await fetchTransactions()
+>>>>>>> bfc3b71 (Pie Chart resizing gefixed)
 
     // ResizeObserver Error global unterdrücken (vor dem Observer registrieren)
     const origError = window.onerror
@@ -227,7 +232,11 @@ onMounted(async () => {
 
                 </div>
 
+<<<<<<< HEAD
                 <!-- RIGHT: Sparquote – bei md überbeide Spalten zentriert, bei xl normal -->
+=======
+                <!-- RIGHT: Sparquote – bei md über beide Spalten zentriert, bei xl normal -->
+>>>>>>> bfc3b71 (Pie Chart resizing gefixed)
                 <div
                     class="bg-blue-100 rounded-2xl p-6 shadow flex flex-col justify-center items-center md:col-span-2 xl:col-span-1">
                     <h3 class="text-sm text-gray-600 mb-2">Sparquote</h3>

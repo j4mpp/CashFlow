@@ -12,9 +12,19 @@ $useridRaw = $_GET["userid"] ?? null;
 $bankidRaw = $_GET["bankid"] ?? null;
 
 // Basisverzeichnis, in dem PNGs liegen
-$baseDir = realpath(__DIR__ . "/../../img/bankpng");
-
-if ($baseDir === false) {
+// Robust für unterschiedliche Deploy-Pfade (legacy + aktueller Pfad)
+$baseDirCandidates = [
+    "/volume1/web/img/bankpng/"
+];
+$baseDir = null;
+foreach ($baseDirCandidates as $candidateDir) {
+    $resolved = realpath($candidateDir);
+    if ($resolved !== false && is_dir($resolved)) {
+        $baseDir = $resolved;
+        break;
+    }
+}
+if ($baseDir === null) {
     http_response_code(404);
     exit;
 }

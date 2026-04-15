@@ -12,7 +12,7 @@ $useridRaw = $_GET["userid"] ?? null;
 $bankidRaw = $_GET["bankid"] ?? null;
 
 // Basisverzeichnis, in dem PNGs liegen
-$baseDir = realpath(__DIR__ . "/../img/bankpng");
+$baseDir = realpath(__DIR__ . "/../../img/bankpng");
 
 if ($baseDir === false) {
     http_response_code(404);

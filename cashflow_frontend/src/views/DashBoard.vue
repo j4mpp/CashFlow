@@ -20,14 +20,35 @@ const editingBankId = ref(null)
 const pieCanvas = ref(null)
 let pieChart = null
 
+function getValidUserId() {
+    const userid = localStorage.getItem("userid")
+    if (!userid || !/^\d+$/.test(userid)) {
+        throw new Error("Ungültige Session. Bitte neu einloggen.")
+    }
+    return userid
+}
+
+async function fetchJson(url, options = {}) {
+    const res = await fetch(url, {
+        credentials: "include",
+        ...options
+    })
+
+    const data = await res.json()
+    if (!res.ok || data?.error) {
+        throw new Error(data?.error || "Request fehlgeschlagen")
+    }
+    return data
+}
+
 /* =========================
    FETCH BANKS
 ========================= */
 
 async function fetchBanks() {
-    const userid = localStorage.getItem("userid")
-    const res = await fetch(`http://localhost:8000/banks/get.php?userid=${userid}`)
-    banks.value = await res.json()
+    const userid = getValidUserId()
+    const safeUserId = encodeURIComponent(userid)
+    banks.value = await fetchJson(`/cashflow_api/banks/get.php?userid=${safeUserId}`)
     loadingBanks.value = false
 
     renderChart()
@@ -38,9 +59,9 @@ async function fetchBanks() {
 ========================= */
 
 async function fetchTransactions() {
-    const userid = localStorage.getItem("userid")
-    const res = await fetch(`http://localhost:8000/transactions/get.php?userid=${userid}`)
-    transactions.value = await res.json()
+    const userid = getValidUserId()
+    const safeUserId = encodeURIComponent(userid)
+    transactions.value = await fetchJson(`/cashflow_api/transactions/get.php?userid=${safeUserId}`)
 
     calculateStats()
 }
@@ -133,8 +154,9 @@ function formatBalance(amount) {
 }
 
 function getBankIcon(type) {
-    const userid = localStorage.getItem("userid")
-    return `http://localhost:8000/banks/logo.php?userid=${userid}&bankid=${type}`
+    const userid = localStorage.getItem("userid") || ""
+    const safeUserId = /^\d+$/.test(userid) ? userid : "0"
+    return `/banks/logo.php?userid=${encodeURIComponent(safeUserId)}&bankid=${encodeURIComponent(type)}`
 }
 
 /* =========================
@@ -142,8 +164,15 @@ function getBankIcon(type) {
 ========================= */
 
 onMounted(async () => {
-    await fetchBanks()
-    await fetchTransactions()
+    try {
+        await fetchBanks()
+        await fetchTransactions()
+    } catch (err) {
+        console.error("Dashboard konnte nicht geladen werden:", err)
+        banks.value = []
+        transactions.value = []
+        loadingBanks.value = false
+    }
 
     // ResizeObserver Error global unterdrücken (vor dem Observer registrieren)
     const origError = window.onerror

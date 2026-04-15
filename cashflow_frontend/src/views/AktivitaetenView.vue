@@ -10,6 +10,27 @@ const loading = ref(true)
 const banks = ref([])
 const subcategories = ref([])
 
+function getValidUserId() {
+  const userid = localStorage.getItem("userid")
+  if (!userid || !/^\d+$/.test(userid)) {
+    throw new Error("Ungültige Session. Bitte neu einloggen.")
+  }
+  return userid
+}
+
+async function fetchJson(url, options = {}) {
+  const res = await fetch(url, {
+    credentials: "include",
+    ...options
+  })
+
+  const data = await res.json()
+  if (!res.ok || data?.error) {
+    throw new Error(data?.error || "Request fehlgeschlagen")
+  }
+  return data
+}
+
 /* =========================
    MOCK FALLBACK
 ========================= */
@@ -61,23 +82,13 @@ const accounts = computed(() => {
 
 async function fetchActivities() {
   try {
-    const userid = localStorage.getItem("userid")
-
-    if (!userid) {
-      activities.value = mockActivities
-      return
-    }
-
-    const [txRes, banksRes, subsRes] = await Promise.all([
-      fetch(`http://localhost:8000/transactions/get.php?userid=${userid}`),
-      fetch(`http://localhost:8000/banks/get.php?userid=${userid}`),
-      fetch(`http://localhost:8000/subcategories/get.php?userid=${userid}`)
-    ])
+    const userid = getValidUserId()
+    const safeUserId = encodeURIComponent(userid)
 
     const [txs, fetchedBanks, fetchedSubs] = await Promise.all([
-      txRes.json(),
-      banksRes.json(),
-      subsRes.json()
+      fetchJson(`/cashflow_api/transactions/get.php?userid=${safeUserId}`),
+      fetchJson(`/cashflow_api/banks/get.php?userid=${safeUserId}`),
+      fetchJson(`/cashflow_api/subcategories/get.php?userid=${safeUserId}`)
     ])
 
     banks.value = Array.isArray(fetchedBanks) ? fetchedBanks : []
@@ -144,8 +155,7 @@ function closeModal() {
 }
 
 async function saveTransaction() {
-  const userid = localStorage.getItem("userid")
-  if (!userid) return alert("Nicht eingeloggt.")
+  const userid = getValidUserId()
 
   const name = txName.value.trim()
   const description = txDescription.value.trim()
@@ -162,16 +172,16 @@ async function saveTransaction() {
 
   creating.value = true
   try {
-    await fetch("http://localhost:8000/transactions/create.php", {
+    await fetchJson("/cashflow_api/transactions/create.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userid,
-        subcategoryid,
+        subcategoryid: Number(subcategoryid),
         name,
         description,
         amount,
-        bankid,
+        bankid: Number(bankid),
         date
       })
     })
@@ -182,12 +192,12 @@ async function saveTransaction() {
       const current = Number(bank.amount)
       const nextAmount = (Number.isFinite(current) ? current : 0) + amount
 
-      await fetch("http://localhost:8000/banks/update.php", {
+      await fetchJson("/cashflow_api/banks/update.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userid,
-          id: bank.id,
+          id: Number(bank.id),
           name: bank.name,
           iban: bank.iban,
           amount: nextAmount,

@@ -30,6 +30,27 @@ const transactions = ref([])
 const banks = ref([])
 const selectedBankId = ref("all")
 
+function getValidUserId() {
+    const userid = localStorage.getItem("userid")
+    if (!userid || !/^\d+$/.test(userid)) {
+        throw new Error("Ungültige Session. Bitte neu einloggen.")
+    }
+    return userid
+}
+
+async function fetchJson(url, options = {}) {
+    const res = await fetch(url, {
+        credentials: "include",
+        ...options
+    })
+
+    const data = await res.json()
+    if (!res.ok || data?.error) {
+        throw new Error(data?.error || "Request fehlgeschlagen")
+    }
+    return data
+}
+
 /* =========================
    CHART RENDER
 ========================= */
@@ -129,23 +150,12 @@ async function loadData() {
     noData.value = false
 
     try {
-        const userid = localStorage.getItem("userid")
-        if (!userid) {
-            transactions.value = []
-            banks.value = []
-            noData.value = true
-            await renderChart([], [])
-            return
-        }
-
-        const [txRes, banksRes] = await Promise.all([
-            fetch(`http://localhost:8000/transactions/get.php?userid=${userid}`),
-            fetch(`http://localhost:8000/banks/get.php?userid=${userid}`)
-        ])
+        const userid = getValidUserId()
+        const safeUserId = encodeURIComponent(userid)
 
         const [txs, fetchedBanks] = await Promise.all([
-            txRes.json(),
-            banksRes.json()
+            fetchJson(`/cashflow_api/transactions/get.php?userid=${safeUserId}`),
+            fetchJson(`/cashflow_api/banks/get.php?userid=${safeUserId}`)
         ])
 
         transactions.value = Array.isArray(txs) ? txs : []

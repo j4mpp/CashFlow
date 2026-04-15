@@ -12,8 +12,9 @@ async function login() {
     error.value = ""
 
     try {
-        const res = await fetch("http://localhost:8000/auth/login.php", {
+        const res = await fetch("/cashflow_api/auth/login.php", {
             method: "POST",
+            credentials: "include",
             headers: {
                 "Content-Type": "application/json"
             },
@@ -25,13 +26,16 @@ async function login() {
 
         const data = await res.json()
 
-        if (data.error) {
+        if (!res.ok || data.error || !data.userid) {
             error.value = data.error
+                || "Login fehlgeschlagen"
+            localStorage.removeItem("userid")
+            localStorage.removeItem("username")
             return
         }
 
         // speichern
-        localStorage.setItem("userid", data.userid)
+        localStorage.setItem("userid", String(data.userid))
         localStorage.setItem("username", data.name)
 
         router.push("/")

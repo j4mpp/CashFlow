@@ -11,6 +11,27 @@ const categories = ref([])
 const loading = ref(true)
 const banks = ref([])
 
+function getValidUserId() {
+  const userid = localStorage.getItem("userid")
+  if (!userid || !/^\d+$/.test(userid)) {
+    throw new Error("Ungültige Session. Bitte neu einloggen.")
+  }
+  return userid
+}
+
+async function fetchJson(url, options = {}) {
+  const res = await fetch(url, {
+    credentials: "include",
+    ...options
+  })
+
+  const data = await res.json()
+  if (!res.ok || data?.error) {
+    throw new Error(data?.error || "Request fehlgeschlagen")
+  }
+  return data
+}
+
 /* =========================
    MOCK FALLBACK
 ========================= */
@@ -64,14 +85,14 @@ function cancelEdit(catOrSub) {
 }
 
 async function saveEditCategory(cat) {
-  const userid = localStorage.getItem("userid")
+  const userid = getValidUserId()
   const newName = (cat._editName || "").trim()
   if (!newName) return alert("Bitte Namen eingeben.")
 
-  await fetch("http://localhost:8000/categories/update.php", {
+  await fetchJson("/cashflow_api/categories/update.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userid, id: cat.id, name: newName })
+    body: JSON.stringify({ userid, id: Number(cat.id), name: newName })
   })
 
   editing.value = null
@@ -79,13 +100,13 @@ async function saveEditCategory(cat) {
 }
 
 async function deleteCategory(cat) {
-  const userid = localStorage.getItem("userid")
+  const userid = getValidUserId()
   if (!confirm("Kategorie wirklich löschen? (inkl. Unterkategorien)")) return
 
-  await fetch("http://localhost:8000/categories/delete.php", {
+  await fetchJson("/cashflow_api/categories/delete.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userid, id: cat.id })
+    body: JSON.stringify({ userid, id: Number(cat.id) })
   })
 
   editing.value = null
@@ -93,14 +114,14 @@ async function deleteCategory(cat) {
 }
 
 async function saveEditSub(sub) {
-  const userid = localStorage.getItem("userid")
+  const userid = getValidUserId()
   const newName = (sub._editName || "").trim()
   if (!newName) return alert("Bitte Namen eingeben.")
 
-  await fetch("http://localhost:8000/subcategories/update.php", {
+  await fetchJson("/cashflow_api/subcategories/update.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userid, id: sub.id, name: newName })
+    body: JSON.stringify({ userid, id: Number(sub.id), name: newName })
   })
 
   editing.value = null
@@ -108,13 +129,13 @@ async function saveEditSub(sub) {
 }
 
 async function deleteSub(sub) {
-  const userid = localStorage.getItem("userid")
+  const userid = getValidUserId()
   if (!confirm("Unterkategorie wirklich löschen?")) return
 
-  await fetch("http://localhost:8000/subcategories/delete.php", {
+  await fetchJson("/cashflow_api/subcategories/delete.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userid, id: sub.id })
+    body: JSON.stringify({ userid, id: Number(sub.id) })
   })
 
   editing.value = null
@@ -128,25 +149,14 @@ async function deleteSub(sub) {
 
 async function fetchCategories() {
   try {
-    const userid = localStorage.getItem("userid")
-
-    if (!userid) {
-      categories.value = mockCategories
-      return
-    }
-
-    const [catRes, subRes, txRes, banksRes] = await Promise.all([
-      fetch(`http://localhost:8000/categories/get.php?userid=${userid}`),
-      fetch(`http://localhost:8000/subcategories/get.php?userid=${userid}`),
-      fetch(`http://localhost:8000/transactions/get.php?userid=${userid}`),
-      fetch(`http://localhost:8000/banks/get.php?userid=${userid}`)
-    ])
+    const userid = getValidUserId()
+    const safeUserId = encodeURIComponent(userid)
 
     const [cats, subs, txs, fetchedBanks] = await Promise.all([
-      catRes.json(),
-      subRes.json(),
-      txRes.json(),
-      banksRes.json()
+      fetchJson(`/cashflow_api/categories/get.php?userid=${safeUserId}`),
+      fetchJson(`/cashflow_api/subcategories/get.php?userid=${safeUserId}`),
+      fetchJson(`/cashflow_api/transactions/get.php?userid=${safeUserId}`),
+      fetchJson(`/cashflow_api/banks/get.php?userid=${safeUserId}`)
     ])
 
     banks.value = Array.isArray(fetchedBanks) ? fetchedBanks : []
@@ -220,8 +230,7 @@ function closeEntryModal() {
 }
 
 async function saveEntry() {
-  const userid = localStorage.getItem("userid")
-  if (!userid) return alert("Nicht eingeloggt.")
+  const userid = getValidUserId()
 
   const name = entryName.value.trim()
   const description = entryDescription.value.trim()
@@ -238,16 +247,16 @@ async function saveEntry() {
 
   creatingEntry.value = true
   try {
-    await fetch("http://localhost:8000/transactions/create.php", {
+    await fetchJson("/cashflow_api/transactions/create.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userid,
-        subcategoryid,
+        subcategoryid: Number(subcategoryid),
         name,
         description,
         amount,
-        bankid,
+        bankid: Number(bankid),
         date
       })
     })
@@ -258,12 +267,12 @@ async function saveEntry() {
       const current = Number(bank.amount)
       const nextAmount = (Number.isFinite(current) ? current : 0) + amount
 
-      await fetch("http://localhost:8000/banks/update.php", {
+      await fetchJson("/cashflow_api/banks/update.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userid,
-          id: bank.id,
+          id: Number(bank.id),
           name: bank.name,
           iban: bank.iban,
           amount: nextAmount,
@@ -344,20 +353,20 @@ function closeEditEntryModal() {
 }
 
 async function saveEditEntry() {
-  const userid = localStorage.getItem("userid")
+  const userid = getValidUserId()
   const e = editingEntry.value
 
-  await fetch("http://localhost:8000/transactions/update.php", {
+  await fetchJson("/cashflow_api/transactions/update.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       userid,
-      id: e.id,
-      subcategoryid: e.subcategoryid,
+      id: Number(e.id),
+      subcategoryid: Number(e.subcategoryid),
       name: e.name,
       description: e.description,
       amount: Number(e.amount),
-      bankid: e.bankid,
+      bankid: Number(e.bankid),
       date: e.date
     })
   })
@@ -368,13 +377,13 @@ async function saveEditEntry() {
 }
 
 async function deleteEntry(e) {
-  const userid = localStorage.getItem("userid")
+  const userid = getValidUserId()
   if (!confirm("Eintrag wirklich löschen?")) return
 
-  await fetch("http://localhost:8000/transactions/delete.php", {
+  await fetchJson("/cashflow_api/transactions/delete.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userid, id: e.id })
+    body: JSON.stringify({ userid, id: Number(e.id) })
   })
 
   closeEditEntryModal()
@@ -390,12 +399,12 @@ async function saveCategory() {
   if (!catName.value) return alert("Bitte Name eingeben.")
 
   const userid = localStorage.getItem("userid")
-  if (!userid) return alert("Nicht eingeloggt.")
+  if (!userid || !/^\d+$/.test(userid)) return alert("Nicht eingeloggt.")
 
   try {
     // 🔹 Hauptkategorie speichern
     if (catType.value === "main") {
-      await fetch("http://localhost:8000/categories/create.php", {
+      await fetchJson("/cashflow_api/categories/create.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -412,14 +421,14 @@ async function saveCategory() {
       if (!parentCategory.value)
         return alert("Übergeordnete Kategorie wählen")
 
-      await fetch("http://localhost:8000/subcategories/create.php", {
+      await fetchJson("/cashflow_api/subcategories/create.php", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
           userid,
-          categoryid: parentCategory.value,
+          categoryid: Number(parentCategory.value),
           name: catName.value
         })
       })

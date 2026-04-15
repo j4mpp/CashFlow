@@ -39,10 +39,10 @@ $logo = cashflow_validate_upload_image_optional("logo", 5242880);
 if ($logo !== null) {
     $tmpPath = $logo["tmpPath"];
 
-    $targetDir = realpath(__DIR__ . "../img/bankpng");
+    $targetDir = realpath(__DIR__ . "/../img/bankpng");
     if ($targetDir === false) {
         // Fallback: Verzeichnis versuchen zu erstellen
-        $targetDir = __DIR__ . "../img/bankpng";
+        $targetDir = __DIR__ . "/../img/bankpng";
         if (!is_dir($targetDir)) {
             @mkdir($targetDir, 0777, true);
         }

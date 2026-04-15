@@ -42,6 +42,100 @@ async function fetchJson(url, options = {}) {
 }
 
 /* =========================
+    ENTRY MODAL
+========================= */
+const selectedBankName = ref("")
+const showEntryModal = ref(false)
+const creatingEntry = ref(false)
+const activeSubcategoryId = ref("")
+
+const entryName = ref("")
+const entryDescription = ref("")
+const entryAmount = ref("")
+const entryBankId = ref("")
+const entryDate = ref(new Date().toISOString().slice(0, 10)) // YYYY-MM-DD
+
+function openEntryModal(bankId, bankName) {
+    entryBankId.value = bankId
+    selectedBankName.value = bankName
+
+    entryName.value = ""
+    entryDescription.value = ""
+    entryAmount.value = ""
+    entryDate.value = new Date().toISOString().slice(0, 10)
+
+    showEntryModal.value = true
+}
+
+function closeEntryModal() {
+    showEntryModal.value = false
+    activeSubcategoryId.value = ""
+}
+
+async function saveEntry() {
+    const userid = getValidUserId()
+
+    const name = entryName.value.trim()
+    const description = entryDescription.value.trim()
+    const amount = Number(entryAmount.value)
+    const bankid = entryBankId.value
+    const subcategoryid = activeSubcategoryId.value
+    const date = entryDate.value
+
+    if (!subcategoryid) return alert("Unterkategorie fehlt.")
+    if (!name) return alert("Bitte Name eingeben.")
+    if (!bankid) return alert("Bitte Konto wählen.")
+    if (!Number.isFinite(amount)) return alert("Bitte gültigen Betrag eingeben.")
+    if (!date) return alert("Bitte Datum wählen.")
+
+    creatingEntry.value = true
+    try {
+        await fetchJson("/cashflow_api/transactions/create.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                userid,
+                subcategoryid: Number(subcategoryid),
+                name,
+                description,
+                amount,
+                bankid: Number(bankid),
+                date
+            })
+        })
+
+        // Bank-Balance aktualisieren: neuer Betrag = alter Betrag + Transaktionsbetrag
+        const bank = banks.value.find(b => String(b.id) === String(bankid))
+        if (bank) {
+            const current = Number(bank.amount)
+            const nextAmount = (Number.isFinite(current) ? current : 0) + amount
+
+            await fetchJson("/cashflow_api/banks/update.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userid,
+                    id: Number(bank.id),
+                    name: bank.name,
+                    iban: bank.iban,
+                    amount: nextAmount,
+                    bankfirma: bank.bankfirma
+                })
+            })
+        }
+
+        closeEntryModal()
+        loading.value = true
+        await fetchCategories()
+    } catch (err) {
+        console.log("Fehler beim Speichern:", err)
+        alert("Fehler beim Speichern.")
+    } finally {
+        creatingEntry.value = false
+    }
+}
+
+/* =========================
    FETCH BANKS
 ========================= */
 
@@ -241,12 +335,57 @@ onMounted(async () => {
             <div v-if="loadingBanks">Konten werden geladen...</div>
 
             <div v-for="bank in banks" :key="bank.id">
-
-                <BankAccountCard :accountName="bank.name" :accountOwner="'CashFlow User'" :icon="getBankIcon(bank.id)"
-                    :balance="formatBalance(bank.amount)" :iban="bank.iban" />
-
+                <BankAccountCard :accountName="bank.name" :balanceId="bank.id" :iban="bank.iban" :balance="bank.amount"
+                    :icon="getBankIcon(bank.bankfirma)" @add-entry="openEntryModal" />
             </div>
 
         </main>
+    </div>
+
+    <!-- MODAL -->
+    <div v-if="showEntryModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+
+        <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+
+            <span class="h-20 pb-3 flex items-center gap-3">
+                <ion-icon name="add-circle" class="w-8 h-8 text-teal-400"></ion-icon>
+                <h2 class="text-2xl font-semibold">
+                    Neuer Eintrag
+                </h2>
+            </span>
+
+            <label class="block text-sm mb-1">Name</label>
+            <input v-model="entryName" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+            <label class="block text-sm mb-1">Beschreibung</label>
+            <input v-model="entryDescription" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+            <label class="block text-sm mb-1">Betrag (€)</label>
+            <input v-model="entryAmount" type="number" step="0.01"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+            <label class="block text-sm mb-1">Konto</label>
+            <select v-model="entryBankId" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+                <option value="">Bitte wählen</option>
+                <option v-for="b in banks" :key="b.id" :value="b.id">
+                    {{ b.name }}
+                </option>
+            </select>
+
+            <label class="block text-sm mb-1">Datum</label>
+            <input v-model="entryDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button @click="closeEntryModal" class="px-4 py-2 border rounded-xl" :disabled="creatingEntry">
+                    Abbrechen
+                </button>
+
+                <button @click="saveEntry" class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl"
+                    :disabled="creatingEntry">
+                    Speichern
+                </button>
+            </div>
+
+        </div>
     </div>
 </template>

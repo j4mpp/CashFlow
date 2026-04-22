@@ -275,7 +275,7 @@ watch(showModal, async (val) => {
                                     :class="Number(t.amount) < 0 ? 'text-red-500' : 'text-emerald-600'">
                                     {{ Number(t.amount) < 0 ? "-" : "+" }}{{
                                         Math.abs(Number(t.amount)).toLocaleString("de-DE", { minimumFractionDigits: 2 })
-                                        }} € </span>
+                                    }} € </span>
                             </div>
                         </div>
                     </div>

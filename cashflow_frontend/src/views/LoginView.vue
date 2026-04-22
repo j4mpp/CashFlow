@@ -72,8 +72,7 @@ async function login() {
                         class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg"></ion-icon>
 
                     <input v-model="email" placeholder="Please enter your email"
-                        class="rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400 outline-none px-3 py-3 pl-10 w-full transition"
-                    />
+                        class="rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400 outline-none px-3 py-3 pl-10 w-full transition" />
                 </div>
             </div>
 
@@ -97,13 +96,6 @@ async function login() {
                 class="mt-8 py-3 w-full rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium transition hover:scale-[1.02] hover:shadow-lg">
                 Login
             </button>
-
-            <p class="text-center py-8 text-gray-500">
-                Don't have an account?
-                <a href="/signup" class="text-emerald-600 hover:underline font-medium">
-                    Sign up
-                </a>
-            </p>
 
         </form>
     </main>

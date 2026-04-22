@@ -2,11 +2,6 @@
 import Navbar from "@/components/Navbar.vue"
 import { ref, computed, onMounted, watch } from "vue"
 
-
-/* =========================
-   STATE
-========================= */
-
 const categories = ref([])
 const loading = ref(true)
 const banks = ref([])
@@ -24,7 +19,6 @@ async function fetchJson(url, options = {}) {
     credentials: "include",
     ...options
   })
-
   const data = await res.json()
   if (!res.ok || data?.error) {
     throw new Error(data?.error || "Request fehlgeschlagen")
@@ -32,116 +26,83 @@ async function fetchJson(url, options = {}) {
   return data
 }
 
-/* =========================
-   MOCK FALLBACK
-========================= */
-
 const mockCategories = [
   {
     id: crypto.randomUUID(),
     name: "Haushalt",
     open: false,
     subcategories: [
-      {
-        id: crypto.randomUUID(),
-        name: "Lebensmittel",
-        open: false,
-        entries: []
-      },
-      {
-        id: crypto.randomUUID(),
-        name: "Strom",
-        open: false,
-        entries: []
-      },
-      {
-        id: crypto.randomUUID(),
-        name: "Wasser",
-        open: false,
-        entries: []
-      }
+      { id: crypto.randomUUID(), name: "Lebensmittel", open: false, entries: [] },
+      { id: crypto.randomUUID(), name: "Strom", open: false, entries: [] },
+      { id: crypto.randomUUID(), name: "Wasser", open: false, entries: [] }
     ]
   }
 ]
 
-const editing = ref(null)
-// editing = { type: "cat"|"sub", id: number|string, originalName: string }
+/* =========================
+   EDIT MODAL (Kategorie / Unterkategorie)
+========================= */
 
-function startEditCategory(cat) {
-  editing.value = { type: "cat", id: cat.id, originalName: cat.name }
-  cat._editName = cat.name
+const showEditCatModal = ref(false)
+const editCatModal = ref({ type: "", id: null, name: "" })
+
+function openEditCatModal(type, item) {
+  editCatModal.value = { type, id: item.id, name: item.name }
+  showEditCatModal.value = true
 }
 
-function startEditSub(sub) {
-  editing.value = { type: "sub", id: sub.id, originalName: sub.name }
-  sub._editName = sub.name
+function closeEditCatModal() {
+  showEditCatModal.value = false
 }
 
-function cancelEdit(catOrSub) {
-  if (catOrSub?._editName !== undefined) {
-    catOrSub._editName = undefined
+async function saveEditCatModal() {
+  const userid = getValidUserId()
+  const { type, id, name } = editCatModal.value
+  const trimmed = name.trim()
+  if (!trimmed) return alert("Bitte Namen eingeben.")
+
+  if (type === "cat") {
+    await fetchJson("/cashflow_api/categories/update.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userid, id: Number(id), name: trimmed })
+    })
+  } else {
+    await fetchJson("/cashflow_api/subcategories/update.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userid, id: Number(id), name: trimmed })
+    })
   }
-  editing.value = null
-}
 
-async function saveEditCategory(cat) {
-  const userid = getValidUserId()
-  const newName = (cat._editName || "").trim()
-  if (!newName) return alert("Bitte Namen eingeben.")
-
-  await fetchJson("/cashflow_api/categories/update.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userid, id: Number(cat.id), name: newName })
-  })
-
-  editing.value = null
+  closeEditCatModal()
   await fetchCategories()
 }
 
-async function deleteCategory(cat) {
+async function deleteFromEditCatModal() {
   const userid = getValidUserId()
-  if (!confirm("Kategorie wirklich löschen? (inkl. Unterkategorien)")) return
+  const { type, id } = editCatModal.value
 
-  await fetchJson("/cashflow_api/categories/delete.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userid, id: Number(cat.id) })
-  })
+  const label = type === "cat" ? "Kategorie wirklich löschen? (inkl. Unterkategorien)" : "Unterkategorie wirklich löschen?"
+  if (!confirm(label)) return
 
-  editing.value = null
+  if (type === "cat") {
+    await fetchJson("/cashflow_api/categories/delete.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userid, id: Number(id) })
+    })
+  } else {
+    await fetchJson("/cashflow_api/subcategories/delete.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userid, id: Number(id) })
+    })
+  }
+
+  closeEditCatModal()
   await fetchCategories()
 }
-
-async function saveEditSub(sub) {
-  const userid = getValidUserId()
-  const newName = (sub._editName || "").trim()
-  if (!newName) return alert("Bitte Namen eingeben.")
-
-  await fetchJson("/cashflow_api/subcategories/update.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userid, id: Number(sub.id), name: newName })
-  })
-
-  editing.value = null
-  await fetchCategories()
-}
-
-async function deleteSub(sub) {
-  const userid = getValidUserId()
-  if (!confirm("Unterkategorie wirklich löschen?")) return
-
-  await fetchJson("/cashflow_api/subcategories/delete.php", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userid, id: Number(sub.id) })
-  })
-
-  editing.value = null
-  await fetchCategories()
-}
-
 
 /* =========================
    FETCH FROM BACKEND
@@ -168,7 +129,6 @@ async function fetchCategories() {
       return acc
     }, {})
 
-    // Kategorien Struktur aufbauen
     const structured = cats.map(cat => ({
       ...cat,
       open: false,
@@ -186,7 +146,6 @@ async function fetchCategories() {
     }))
 
     categories.value = structured
-
   } catch (err) {
     console.log("Backend Fehler → Mock geladen")
     categories.value = mockCategories
@@ -194,7 +153,6 @@ async function fetchCategories() {
     loading.value = false
   }
 }
-
 
 onMounted(() => {
   fetchCategories()
@@ -212,7 +170,7 @@ const entryName = ref("")
 const entryDescription = ref("")
 const entryAmount = ref("")
 const entryBankId = ref("")
-const entryDate = ref(new Date().toISOString().slice(0, 10)) // YYYY-MM-DD
+const entryDate = ref(new Date().toISOString().slice(0, 10))
 
 function openEntryModal(sub) {
   activeSubcategoryId.value = String(sub.id)
@@ -231,7 +189,6 @@ function closeEntryModal() {
 
 async function saveEntry() {
   const userid = getValidUserId()
-
   const name = entryName.value.trim()
   const description = entryDescription.value.trim()
   const amount = Number(entryAmount.value)
@@ -250,34 +207,17 @@ async function saveEntry() {
     await fetchJson("/cashflow_api/transactions/create.php", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userid,
-        subcategoryid: Number(subcategoryid),
-        name,
-        description,
-        amount,
-        bankid: Number(bankid),
-        date
-      })
+      body: JSON.stringify({ userid, subcategoryid: Number(subcategoryid), name, description, amount, bankid: Number(bankid), date })
     })
 
-    // Bank-Balance aktualisieren: neuer Betrag = alter Betrag + Transaktionsbetrag
     const bank = banks.value.find(b => String(b.id) === String(bankid))
     if (bank) {
       const current = Number(bank.amount)
       const nextAmount = (Number.isFinite(current) ? current : 0) + amount
-
       await fetchJson("/cashflow_api/banks/update.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userid,
-          id: Number(bank.id),
-          name: bank.name,
-          iban: bank.iban,
-          amount: nextAmount,
-          bankfirma: bank.bankfirma
-        })
+        body: JSON.stringify({ userid, id: Number(bank.id), name: bank.name, iban: bank.iban, amount: nextAmount, bankfirma: bank.bankfirma })
       })
     }
 
@@ -285,7 +225,6 @@ async function saveEntry() {
     loading.value = true
     await fetchCategories()
   } catch (err) {
-    console.log("Fehler beim Speichern:", err)
     alert("Fehler beim Speichern.")
   } finally {
     creatingEntry.value = false
@@ -293,12 +232,10 @@ async function saveEntry() {
 }
 
 /* =========================
-   MODAL STATE
+   MODAL STATE (neue Kategorie)
 ========================= */
 
 const showModal = ref(false)
-const mode = ref("category")
-
 const catName = ref("")
 const catType = ref("main")
 const parentCategory = ref("")
@@ -324,16 +261,11 @@ function closeModal() {
 }
 
 /* =========================
-   TOGGLE LOGIC
+   TOGGLE
 ========================= */
 
-function toggleCategory(cat) {
-  cat.open = !cat.open
-}
-
-function toggleSub(sub) {
-  sub.open = !sub.open
-}
+function toggleCategory(cat) { cat.open = !cat.open }
+function toggleSub(sub) { sub.open = !sub.open }
 
 /* =========================
    EDIT ENTRY
@@ -355,22 +287,11 @@ function closeEditEntryModal() {
 async function saveEditEntry() {
   const userid = getValidUserId()
   const e = editingEntry.value
-
   await fetchJson("/cashflow_api/transactions/update.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userid,
-      id: Number(e.id),
-      subcategoryid: Number(e.subcategoryid),
-      name: e.name,
-      description: e.description,
-      amount: Number(e.amount),
-      bankid: Number(e.bankid),
-      date: e.date
-    })
+    body: JSON.stringify({ userid, id: Number(e.id), subcategoryid: Number(e.subcategoryid), name: e.name, description: e.description, amount: Number(e.amount), bankid: Number(e.bankid), date: e.date })
   })
-
   closeEditEntryModal()
   loading.value = true
   await fetchCategories()
@@ -379,13 +300,11 @@ async function saveEditEntry() {
 async function deleteEntry(e) {
   const userid = getValidUserId()
   if (!confirm("Eintrag wirklich löschen?")) return
-
   await fetchJson("/cashflow_api/transactions/delete.php", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userid, id: Number(e.id) })
   })
-
   closeEditEntryModal()
   loading.value = true
   await fetchCategories()
@@ -397,52 +316,31 @@ async function deleteEntry(e) {
 
 async function saveCategory() {
   if (!catName.value) return alert("Bitte Name eingeben.")
-
   const userid = localStorage.getItem("userid")
   if (!userid || !/^\d+$/.test(userid)) return alert("Nicht eingeloggt.")
 
   try {
-    // 🔹 Hauptkategorie speichern
     if (catType.value === "main") {
       await fetchJson("/cashflow_api/categories/create.php", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          userid,
-          name: catName.value
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userid, name: catName.value })
       })
     }
-
-    // 🔹 Unterkategorie speichern
     if (catType.value === "sub") {
-      if (!parentCategory.value)
-        return alert("Übergeordnete Kategorie wählen")
-
+      if (!parentCategory.value) return alert("Übergeordnete Kategorie wählen")
       await fetchJson("/cashflow_api/subcategories/create.php", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          userid,
-          categoryid: Number(parentCategory.value),
-          name: catName.value
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userid, categoryid: Number(parentCategory.value), name: catName.value })
       })
     }
-
     closeModal()
-
     await fetchCategories()
-
   } catch (err) {
     console.log("Fehler beim Speichern:", err)
   }
 }
-
 
 const mainCategories = computed(() => categories.value)
 </script>
@@ -451,15 +349,12 @@ const mainCategories = computed(() => categories.value)
   <div class="min-h-screen flex text-gray-900">
     <main class="flex-1 p-6 relative">
 
-      <!-- Hintergrund Glow -->
       <div class="absolute inset-0 -z-10">
         <div class="absolute left-0 top-0 w-[500px] h-[500px] bg-teal-300/40 rounded-full blur-3xl"></div>
         <div class="absolute right-0 bottom-0 w-[400px] h-[400px] bg-emerald-400/40 rounded-full blur-3xl"></div>
       </div>
 
-      <h1 class="text-3xl font-semibold mb-6 ">
-        Kategorien
-      </h1>
+      <h1 class="text-3xl font-semibold mb-6">Kategorien</h1>
 
       <div v-if="loading" class="text-center py-10 text-gray-500">
         Kategorien werden geladen...
@@ -467,40 +362,23 @@ const mainCategories = computed(() => categories.value)
 
       <div v-else class="space-y-4">
 
-        <!-- MAIN CATEGORIES -->
         <div v-for="cat in categories" :key="cat.id"
           class="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl">
 
           <button @click="toggleCategory(cat)"
             class="w-full flex items-center justify-between px-5 py-4 text-left font-medium text-lg">
-            <ion-icon name="pencil" class="mr-3" @click.stop="startEditCategory(cat)"></ion-icon>
 
-            <!-- Name oder Input -->
-            <template v-if="editing?.type === 'cat' && editing?.id === cat.id">
-              <input v-model="cat._editName" class="flex-1 bg-transparent outline-none" />
-              <div class="flex items-center gap-3 ml-3">
-                <button class="text-sm text-red-600" @click.stop="deleteCategory(cat)">
-                  Delete
-                </button>
-                <button class="text-sm text-emerald-600" @click.stop="saveEditCategory(cat)">
-                  Save
-                </button>
-              </div>
-            </template>
+            <!-- Stift öffnet jetzt Modal -->
+            <ion-icon name="pencil" class="mr-3 shrink-0 cursor-pointer" @click.stop="openEditCatModal('cat', cat)" />
 
-            <template v-else>
-              <span class="flex-1">{{ cat.name }}</span>
-            </template>
+            <span class="flex-1">{{ cat.name }}</span>
 
             <ion-icon :name="cat.open ? 'chevron-up-outline' : 'chevron-down-outline'" />
           </button>
 
-
           <div v-if="cat.open" class="px-6 pb-6">
 
-            <!-- NACH dem v-for der Subcategories, aber noch innerhalb von div v-if="cat.open" -->
-
-            <button @click.stop="openModalSub(cat); catType = 'sub'; parentCategory = cat.id"
+            <button @click.stop="openModalSub(cat)"
               class="mt-3 w-full rounded-xl border border-gray-200 bg-white/70 px-4 py-2 text-sm font-medium text-teal-700 hover:bg-teal-50 transition">
               <span class="inline-flex items-center gap-2">
                 <ion-icon name="add-outline"></ion-icon>
@@ -508,31 +386,16 @@ const mainCategories = computed(() => categories.value)
               </span>
             </button>
 
-
-            <!-- SUBCATEGORIES -->
             <div v-for="sub in cat.subcategories" :key="sub.id"
               class="mt-3 rounded-xl bg-white/80 backdrop-blur-md border border-gray-200">
 
               <button @click="toggleSub(sub)" class="w-full flex items-center justify-between px-4 py-3 text-left">
-                <!-- 🖊️ STIFT für SUB -->
-                <ion-icon name="pencil" class="mr-3" @click.stop="startEditSub(sub)"></ion-icon>
 
-                <!-- Name oder Input -->
-                <template v-if="editing?.type === 'sub' && editing?.id === sub.id">
-                  <input v-model="sub._editName" class="flex-1 bg-transparent outline-none" />
-                  <div class="flex items-center gap-3 ml-3">
-                    <button class="text-sm text-red-600" @click.stop="deleteSub(sub)">
-                      Delete
-                    </button>
-                    <button class="text-sm text-emerald-600" @click.stop="saveEditSub(sub)">
-                      Save
-                    </button>
-                  </div>
-                </template>
+                <!-- Stift öffnet jetzt Modal -->
+                <ion-icon name="pencil" class="mr-3 shrink-0 cursor-pointer"
+                  @click.stop="openEditCatModal('sub', sub)" />
 
-                <template v-else>
-                  <span class="flex-1">{{ sub.name }}</span>
-                </template>
+                <span class="flex-1">{{ sub.name }}</span>
 
                 <ion-icon :name="sub.open ? 'chevron-up-outline' : 'chevron-down-outline'" />
               </button>
@@ -548,14 +411,11 @@ const mainCategories = computed(() => categories.value)
                   </button>
                 </div>
 
-
                 <div class="mt-2 space-y-2">
                   <div v-for="e in sub.entries" :key="e.id"
                     class="flex items-start justify-between rounded-xl bg-white/70 border border-gray-200 px-4 py-3">
 
-                    <!-- Stift -->
-                    <ion-icon name="pencil" class="mr-3 mt-1 cursor-pointer shrink-0"
-                      @click="openEditEntryModal(e)"></ion-icon>
+                    <ion-icon name="pencil" class="mr-3 mt-1 cursor-pointer shrink-0" @click="openEditEntryModal(e)" />
 
                     <div class="min-w-0 flex-1">
                       <div class="font-medium text-gray-900 truncate">{{ e.name }}</div>
@@ -576,127 +436,145 @@ const mainCategories = computed(() => categories.value)
             </div>
           </div>
 
+          <!-- FLOAT BUTTON -->
+          <button @click="openModalMain"
+            class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl transition hover:scale-110">
+            <ion-icon name="add-outline"></ion-icon>
+          </button>
 
-        </div>
+          <!-- MODAL: Neue Kategorie -->
+          <div v-if="showModal"
+            class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+              <span class="h-20 pb-3 flex items-center gap-3">
+                <ion-icon name="duplicate" class="w-8 h-8 text-teal-400"></ion-icon>
+                <h1 class="text-2xl font-semibold">
+                  {{ catType === 'main' ? 'Neue Hauptkategorie' : 'Neue Unterkategorie' }}
+                </h1>
+              </span>
 
-        <!-- FLOAT BUTTON -->
-        <button @click="openModalMain"
-          class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl transition hover:scale-110">
-          <ion-icon name="add-outline"></ion-icon>
-        </button>
+              <input v-model="catName" placeholder="Name"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
 
-        <!-- MODAL -->
-        <div v-if="showModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
-
-            <span class="h-20 pb-3 flex items-center gap-3">
-              <ion-icon name="duplicate" class="w-8 h-8 text-teal-400"></ion-icon>
-              <h1 class="text-2xl font-semibold">
-                {{ catType === 'main' ? 'Neue Hauptkategorie' : 'Neue Unterkategorie' }}
-              </h1>
-            </span>
-
-            <input v-model="catName" placeholder="Name"
-              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
-
-            <div class="flex justify-end gap-3 pt-4">
-              <button @click="closeModal" class="px-4 py-2 border rounded-xl">Abbrechen</button>
-              <button @click="saveCategory"
-                class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">Speichern</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ENTRY MODAL -->
-        <div v-if="showEntryModal"
-          class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
-            <span class="h-20 pb-3 flex items-center gap-3">
-              <ion-icon name="add-circle" class="w-8 h-8 text-teal-400"></ion-icon>
-              <h2 class="text-2xl font-semibold">
-                Neuer Eintrag
-              </h2>
-            </span>
-
-            <label class="block text-sm mb-1">Name</label>
-            <input v-model="entryName" placeholder="z.B. Billa Einkauf"
-              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
-
-            <label class="block text-sm mb-1">Beschreibung (optional)</label>
-            <input v-model="entryDescription" placeholder="z.B. Wochenendeinkauf"
-              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
-
-            <label class="block text-sm mb-1">Betrag (€)</label>
-            <input v-model="entryAmount" type="number" step="0.01" placeholder="-45.80"
-              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
-
-            <label class="block text-sm mb-1">Konto</label>
-            <select v-model="entryBankId" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
-              <option value="">Bitte wählen</option>
-              <option v-for="b in banks" :key="b.id" :value="b.id">
-                {{ b.name }}
-              </option>
-            </select>
-
-            <label class="block text-sm mb-1">Datum</label>
-            <input v-model="entryDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
-
-            <div class="flex justify-end gap-3 pt-2">
-              <button @click="closeEntryModal" class="px-4 py-2 border rounded-xl" :disabled="creatingEntry">
-                Abbrechen
-              </button>
-
-              <button @click="saveEntry"
-                class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl disabled:opacity-50"
-                :disabled="creatingEntry">
-                Speichern
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- EDIT ENTRY MODAL -->
-        <div v-if="showEditEntryModal"
-          class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
-            <span class="h-20 pb-3 flex items-center gap-3">
-              <ion-icon name="pencil" class="w-8 h-8 text-teal-400"></ion-icon>
-              <h2 class="text-2xl font-semibold">Eintrag bearbeiten</h2>
-            </span>
-
-            <label class="block text-sm mb-1">Name</label>
-            <input v-model="editingEntry.name" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
-
-            <label class="block text-sm mb-1">Beschreibung (optional)</label>
-            <input v-model="editingEntry.description" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
-
-            <label class="block text-sm mb-1">Betrag (€)</label>
-            <input v-model="editingEntry.amount" type="number" step="0.01"
-              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
-
-            <label class="block text-sm mb-1">Konto</label>
-            <select v-model="editingEntry.bankid" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
-              <option v-for="b in banks" :key="b.id" :value="b.id">{{ b.name }}</option>
-            </select>
-
-            <label class="block text-sm mb-1">Datum</label>
-            <input v-model="editingEntry.date" type="date"
-              class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
-
-            <div class="flex justify-between pt-2">
-              <button @click="deleteEntry(editingEntry)"
-                class="px-4 py-2 text-red-500 border border-red-200 rounded-xl hover:bg-red-50">
-                Löschen
-              </button>
-              <div class="flex gap-3">
-                <button @click="closeEditEntryModal" class="px-4 py-2 border rounded-xl">Abbrechen</button>
-                <button @click="saveEditEntry"
+              <div class="flex justify-end gap-3 pt-4">
+                <button @click="closeModal" class="px-4 py-2 border rounded-xl">Abbrechen</button>
+                <button @click="saveCategory"
                   class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">Speichern</button>
               </div>
             </div>
           </div>
-        </div>
 
+          <!-- MODAL: Kategorie / Unterkategorie bearbeiten -->
+          <div v-if="showEditCatModal"
+            class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+
+              <span class="h-20 pb-3 flex items-center gap-3">
+                <ion-icon name="pencil" class="w-8 h-8 text-teal-400"></ion-icon>
+                <h2 class="text-2xl font-semibold">
+                  {{ editCatModal.type === 'cat' ? 'Kategorie bearbeiten' : 'Unterkategorie bearbeiten' }}
+                </h2>
+              </span>
+
+              <label class="block text-sm mb-1">Name</label>
+              <input v-model="editCatModal.name" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
+
+              <div class="flex justify-between pt-2">
+                <button @click="deleteFromEditCatModal"
+                  class="px-4 py-2 text-red-500 border border-red-200 rounded-xl hover:bg-red-50">
+                  Löschen
+                </button>
+                <div class="flex gap-3">
+                  <button @click="closeEditCatModal" class="px-4 py-2 border rounded-xl">Abbrechen</button>
+                  <button @click="saveEditCatModal"
+                    class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">Speichern</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ENTRY MODAL -->
+          <div v-if="showEntryModal"
+            class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+              <span class="h-20 pb-3 flex items-center gap-3">
+                <ion-icon name="add-circle" class="w-8 h-8 text-teal-400"></ion-icon>
+                <h2 class="text-2xl font-semibold">Neuer Eintrag</h2>
+              </span>
+
+              <label class="block text-sm mb-1">Name</label>
+              <input v-model="entryName" placeholder="z.B. Billa Einkauf"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+              <label class="block text-sm mb-1">Beschreibung (optional)</label>
+              <input v-model="entryDescription" placeholder="z.B. Wochenendeinkauf"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+              <label class="block text-sm mb-1">Betrag (€)</label>
+              <input v-model="entryAmount" type="number" step="0.01" placeholder="-45.80"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+              <label class="block text-sm mb-1">Konto</label>
+              <select v-model="entryBankId" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+                <option value="">Bitte wählen</option>
+                <option v-for="b in banks" :key="b.id" :value="b.id">{{ b.name }}</option>
+              </select>
+
+              <label class="block text-sm mb-1">Datum</label>
+              <input v-model="entryDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
+
+              <div class="flex justify-end gap-3 pt-2">
+                <button @click="closeEntryModal" class="px-4 py-2 border rounded-xl"
+                  :disabled="creatingEntry">Abbrechen</button>
+                <button @click="saveEntry"
+                  class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl disabled:opacity-50"
+                  :disabled="creatingEntry">Speichern</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- EDIT ENTRY MODAL -->
+          <div v-if="showEditEntryModal"
+            class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+              <span class="h-20 pb-3 flex items-center gap-3">
+                <ion-icon name="pencil" class="w-8 h-8 text-teal-400"></ion-icon>
+                <h2 class="text-2xl font-semibold">Eintrag bearbeiten</h2>
+              </span>
+
+              <label class="block text-sm mb-1">Name</label>
+              <input v-model="editingEntry.name" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+              <label class="block text-sm mb-1">Beschreibung (optional)</label>
+              <input v-model="editingEntry.description"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+              <label class="block text-sm mb-1">Betrag (€)</label>
+              <input v-model="editingEntry.amount" type="number" step="0.01"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+              <label class="block text-sm mb-1">Konto</label>
+              <select v-model="editingEntry.bankid" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+                <option v-for="b in banks" :key="b.id" :value="b.id">{{ b.name }}</option>
+              </select>
+
+              <label class="block text-sm mb-1">Datum</label>
+              <input v-model="editingEntry.date" type="date"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
+
+              <div class="flex justify-between pt-2">
+                <button @click="deleteEntry(editingEntry)"
+                  class="px-4 py-2 text-red-500 border border-red-200 rounded-xl hover:bg-red-50">Löschen</button>
+                <div class="flex gap-3">
+                  <button @click="closeEditEntryModal" class="px-4 py-2 border rounded-xl">Abbrechen</button>
+                  <button @click="saveEditEntry"
+                    class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl">Speichern</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
     </main>
   </div>
 </template>

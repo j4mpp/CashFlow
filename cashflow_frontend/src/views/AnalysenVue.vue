@@ -23,6 +23,7 @@ const chartCanvas = ref(null)
 let chartInstance = null
 
 const selectedMonths = ref(6)
+const activeTab = ref("ausgaben") // "ausgaben" | "einnahmen"
 const loading = ref(false)
 const noData = ref(false)
 
@@ -43,7 +44,6 @@ async function fetchJson(url, options = {}) {
         credentials: "include",
         ...options
     })
-
     const data = await res.json()
     if (!res.ok || data?.error) {
         throw new Error(data?.error || "Request fehlgeschlagen")
@@ -62,39 +62,47 @@ async function renderChart(labels, values) {
     if (!canvas) return
 
     const existingChart = Chart.getChart(canvas)
-    if (existingChart) {
-        existingChart.destroy()
-    }
+    if (existingChart) existingChart.destroy()
 
     const ctx = canvas.getContext("2d")
+    const isAusgaben = activeTab.value === "ausgaben"
 
     chartInstance = new Chart(ctx, {
         type: "bar",
         data: {
-            labels: labels,
+            labels,
             datasets: [
                 {
-                    label: "Ausgaben (€)",
+                    label: isAusgaben ? "Ausgaben (€)" : "Einnahmen (€)",
                     data: values,
-                    backgroundColor: "#2dd4bf"
+                    backgroundColor: isAusgaben ? "#f87171" : "#2dd4bf"
                 }
             ]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: v => "€" + v.toLocaleString("de-DE")
+                    }
+                }
+            }
         }
     })
 }
 
 /* =========================
-   UPDATE FLOW
+   BUILD CHART
 ========================= */
 
 async function buildChartFromData() {
     const months = selectedMonths.value
-
-    // Basis-Labels = letzte N Monate (ältester Monat links)
     const now = new Date()
     const monthLabels = []
     const monthKeys = []
@@ -109,61 +117,47 @@ async function buildChartFromData() {
 
     const values = monthKeys.map(() => 0)
 
-    const filtered = transactions.value.filter(t => {
-        if (selectedBankId.value !== "all" && String(t.bankid) !== String(selectedBankId.value)) {
-            return false
-        }
+    transactions.value.forEach(t => {
+        if (selectedBankId.value !== "all" && String(t.bankid) !== String(selectedBankId.value)) return
 
         const rawDate = t.date || t.created_at || t.timestamp
-        if (!rawDate) return false
+        if (!rawDate) return
         const d = new Date(rawDate)
-        if (isNaN(d.getTime())) return false
+        if (isNaN(d.getTime())) return
 
-        const year = d.getFullYear()
-        const month = String(d.getMonth() + 1).padStart(2, "0")
-        const key = `${year}-${month}`
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
         const idx = monthKeys.indexOf(key)
-        if (idx === -1) return false
+        if (idx === -1) return
 
         const amount = Number(t.amount)
-        if (!Number.isFinite(amount)) return false
+        if (!Number.isFinite(amount)) return
 
-        // Ausgaben: negative Beträge als positive Balken
-        if (amount < 0) {
+        if (activeTab.value === "ausgaben" && amount < 0) {
             values[idx] += Math.abs(amount)
+        } else if (activeTab.value === "einnahmen" && amount > 0) {
+            values[idx] += amount
         }
-
-        return true
     })
 
     noData.value = values.every(v => v === 0)
-
     await renderChart(monthLabels, values)
-}
-
-async function updateChart() {
-    await buildChartFromData()
 }
 
 async function loadData() {
     loading.value = true
     noData.value = false
-
     try {
         const userid = getValidUserId()
         const safeUserId = encodeURIComponent(userid)
-
         const [txs, fetchedBanks] = await Promise.all([
             fetchJson(`/cashflow_api/transactions/get.php?userid=${safeUserId}`),
             fetchJson(`/cashflow_api/banks/get.php?userid=${safeUserId}`)
         ])
-
         transactions.value = Array.isArray(txs) ? txs : []
         banks.value = Array.isArray(fetchedBanks) ? fetchedBanks : []
-
         await buildChartFromData()
     } catch (err) {
-        console.error("Fehler beim Laden der Analysedaten:", err)
+        console.error("Fehler beim Laden:", err)
         transactions.value = []
         banks.value = []
         noData.value = true
@@ -173,24 +167,29 @@ async function loadData() {
     }
 }
 
+/* =========================
+   TABELLE
+========================= */
+
 const filteredTransactions = computed(() => {
     const months = selectedMonths.value
     const now = new Date()
-
     const oldestMonthDate = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1)
 
     return transactions.value
         .filter(t => {
-            if (selectedBankId.value !== "all" && String(t.bankid) !== String(selectedBankId.value)) {
-                return false
-            }
+            if (selectedBankId.value !== "all" && String(t.bankid) !== String(selectedBankId.value)) return false
 
             const rawDate = t.date || t.created_at || t.timestamp
             if (!rawDate) return false
             const d = new Date(rawDate)
             if (isNaN(d.getTime())) return false
+            if (d < oldestMonthDate) return false
 
-            return d >= oldestMonthDate
+            const amount = Number(t.amount)
+            if (activeTab.value === "ausgaben") return amount < 0
+            if (activeTab.value === "einnahmen") return amount > 0
+            return true
         })
         .sort((a, b) => {
             const ad = new Date(a.date || a.created_at || a.timestamp || 0)
@@ -199,122 +198,116 @@ const filteredTransactions = computed(() => {
         })
 })
 
-watch(selectedMonths, updateChart)
-watch(selectedBankId, updateChart)
+watch(selectedMonths, buildChartFromData)
+watch(selectedBankId, buildChartFromData)
+watch(activeTab, buildChartFromData)
 
 onMounted(() => {
     loadData()
 })
 </script>
 
-
 <template>
-<div class="min-h-screen flex text-gray-900">
+    <div class="min-h-screen flex text-gray-900">
+        <main class="flex-1 min-w-0 p-4 md:p-6">
 
-    <main class="flex-1 min-w-0 p-4 md:p-6">
+            <h1 class="text-3xl font-semibold mb-6">Analysen</h1>
 
-        <h1 class="text-3xl font-semibold mb-4">Analysen</h1>
-
-        <h2 class="text-2xl font-semibold mb-2">Gesamtausgaben</h2>
-
-        <hr>
-
-        <!-- Filter-Leiste -->
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 mt-5">
-            <!-- Monate -->
-            <div class="flex gap-3">
-                <button
-                    v-for="m in [3,6,12]"
-                    :key="m"
-                    @click="selectedMonths = m"
-                    :class="[
-                        'px-4 py-2 rounded-lg border text-sm sm:text-base',
-                        selectedMonths === m
-                            ? 'bg-teal-400 text-white'
-                            : 'bg-white hover:bg-gray-100'
-                    ]"
-                >
-                    Letzte {{ m }} Monate
+            <!-- TAB SWITCH -->
+            <div class="flex gap-2 mb-6">
+                <button @click="activeTab = 'ausgaben'" :class="[
+                    'px-5 py-2 rounded-xl font-medium transition border',
+                    activeTab === 'ausgaben'
+                        ? 'bg-red-400 text-white border-red-400'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                ]">
+                    Ausgaben
+                </button>
+                <button @click="activeTab = 'einnahmen'" :class="[
+                    'px-5 py-2 rounded-xl font-medium transition border',
+                    activeTab === 'einnahmen'
+                        ? 'bg-teal-400 text-white border-teal-400'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                ]">
+                    Einnahmen
                 </button>
             </div>
 
-            <!-- Konto-Filter -->
-            <div class="flex items-center gap-2">
-                <span class="text-sm text-gray-600">Konto:</span>
-                <select
-                    v-model="selectedBankId"
-                    class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm sm:text-base"
-                >
-                    <option value="all">Alle Konten</option>
-                    <option
-                        v-for="b in banks"
-                        :key="b.id"
-                        :value="b.id"
-                    >
-                        {{ b.name }}
-                    </option>
-                </select>
-            </div>
-        </div>
+            <h2 class="text-2xl font-semibold mb-2">
+                {{ activeTab === 'ausgaben' ? 'Gesamtausgaben' : 'Gesamteinnahmen' }}
+            </h2>
+            <hr class="mb-5">
 
-        <!-- Chart + Tabelle -->
-        <div class="bg-white p-4 sm:p-6 rounded-xl shadow border border-gray-200 w-full min-w-0 overflow-hidden">
+            <!-- FILTER -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <!-- Monate -->
+                <div class="flex gap-2 flex-wrap">
+                    <button v-for="m in [3, 6, 9, 12]" :key="m" @click="selectedMonths = m" :class="[
+                        'px-4 py-2 rounded-lg border text-sm',
+                        selectedMonths === m
+                            ? (activeTab === 'ausgaben' ? 'bg-red-400 text-white border-red-400' : 'bg-teal-400 text-white border-teal-400')
+                            : 'bg-white hover:bg-gray-100 border-gray-200'
+                    ]">
+                        {{ m }} Monate
+                    </button>
+                </div>
 
-            <div v-if="loading" class="text-gray-400 mb-4">
-                Lade Daten...
-            </div>
-
-            <div class="relative w-full min-w-0 h-[320px] sm:h-[350px] md:h-[380px] lg:h-[420px] xl:h-[450px]">
-                <canvas ref="chartCanvas" class="block w-full h-full"></canvas>
-            </div>
-
-            <div v-if="noData && !loading" class="text-center text-gray-400 mt-4">
-                Keine Daten verfügbar.
+                <!-- Konto-Filter -->
+                <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-600">Konto:</span>
+                    <select v-model="selectedBankId"
+                        class="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm">
+                        <option value="all">Alle Konten</option>
+                        <option v-for="b in banks" :key="b.id" :value="b.id">{{ b.name }}</option>
+                    </select>
+                </div>
             </div>
 
-            <!-- Detailtabelle -->
-            <div v-if="!noData && filteredTransactions.length" class="mt-6 overflow-x-auto">
-                <table class="min-w-full text-sm">
-                    <thead>
-                        <tr class="border-b text-gray-500">
-                            <th class="text-left pb-2 pr-4">Datum</th>
-                            <th class="text-left pb-2 pr-4">Konto</th>
-                            <th class="text-left pb-2 pr-4">Name</th>
-                            <th class="text-right pb-2">Betrag (€)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            v-for="t in filteredTransactions"
-                            :key="t.id"
-                            class="border-b last:border-0"
-                        >
-                            <td class="py-2 pr-4 text-gray-700">
-                                {{ new Date(t.date || t.created_at || t.timestamp).toLocaleDateString("de-DE") }}
-                            </td>
-                            <td class="py-2 pr-4 text-gray-700">
-                                {{
-                                    (banks.find(b => String(b.id) === String(t.bankid))?.name)
-                                    || "Unbekanntes Konto"
-                                }}
-                            </td>
-                            <td class="py-2 pr-4 text-gray-800">
-                                {{ t.name }}
-                            </td>
-                            <td
-                                class="py-2 text-right font-medium"
-                                :class="Number(t.amount) < 0 ? 'text-red-500' : 'text-green-600'"
-                            >
-                                {{ Number(t.amount).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- CHART -->
+            <div class="bg-white p-4 sm:p-6 rounded-xl shadow border border-gray-200 w-full min-w-0 overflow-hidden">
+
+                <div v-if="loading" class="text-gray-400 mb-4">Lade Daten...</div>
+
+                <div class="relative w-full h-[320px] sm:h-[350px] md:h-[400px]">
+                    <canvas ref="chartCanvas" class="block w-full h-full"></canvas>
+                </div>
+
+                <div v-if="noData && !loading" class="text-center text-gray-400 mt-4">
+                    Keine Daten verfügbar.
+                </div>
+
+                <!-- TABELLE -->
+                <div v-if="!noData && filteredTransactions.length" class="mt-6 overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="border-b text-gray-500">
+                                <th class="text-left pb-2 pr-4">Datum</th>
+                                <th class="text-left pb-2 pr-4">Konto</th>
+                                <th class="text-left pb-2 pr-4">Name</th>
+                                <th class="text-right pb-2">Betrag (€)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="t in filteredTransactions" :key="t.id" class="border-b last:border-0">
+                                <td class="py-2 pr-4 text-gray-700">
+                                    {{ new Date(t.date || t.created_at || t.timestamp).toLocaleDateString("de-DE") }}
+                                </td>
+                                <td class="py-2 pr-4 text-gray-700">
+                                    {{banks.find(b => String(b.id) === String(t.bankid))?.name || "Unbekannt"}}
+                                </td>
+                                <td class="py-2 pr-4 text-gray-800">{{ t.name }}</td>
+                                <td class="py-2 text-right font-medium"
+                                    :class="Number(t.amount) < 0 ? 'text-red-500' : 'text-green-600'">
+                                    {{ Number(t.amount).toLocaleString("de-DE", {
+                                        minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2 }) }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-        </div>
-
-    </main>
-
-</div>
+        </main>
+    </div>
 </template>

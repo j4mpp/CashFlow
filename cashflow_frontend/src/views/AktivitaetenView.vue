@@ -60,9 +60,10 @@ async function fetchActivities() {
         name: t.name,
         amount: Number(t.amount),
         bankid: t.bankid,
+        subcategoryid: t.subcategoryid,
         account: bank ? bank.name : "Unbekanntes Konto",
         category: sub ? sub.name : "Ohne Kategorie",
-        description: t.description,
+        description: t.description ?? "",
         date: t.created_at || t.date || t.timestamp || null
       }
     })
@@ -75,6 +76,8 @@ async function fetchActivities() {
 }
 
 const showModal = ref(false)
+const mode = ref("create") // create | edit
+const editingEntry = ref(null)
 const creating = ref(false)
 const txName = ref("")
 const txDescription = ref("")
@@ -83,16 +86,59 @@ const txBankId = ref("")
 const txSubcategoryId = ref("")
 const txDate = ref(new Date().toISOString().slice(0, 10))
 
-function openModal() { showModal.value = true }
+function normalizeDateToISO(dateValue) {
+  // Backend erwartet YYYY-MM-DD (date_iso).
+  if (!dateValue) return new Date().toISOString().slice(0, 10)
+  if (typeof dateValue === "string") return dateValue.slice(0, 10)
+  return new Date().toISOString().slice(0, 10)
+}
+
+function openModal() {
+  mode.value = "create"
+  editingEntry.value = null
+  showModal.value = true
+}
 
 function closeModal() {
   showModal.value = false
+  mode.value = "create"
+  editingEntry.value = null
   txName.value = ""
   txDescription.value = ""
   txAmount.value = ""
   txBankId.value = ""
   txSubcategoryId.value = ""
   txDate.value = new Date().toISOString().slice(0, 10)
+}
+
+function openEditModal(activity) {
+  mode.value = "edit"
+  editingEntry.value = activity
+
+  txName.value = activity.name ?? ""
+  txDescription.value = activity.description ?? ""
+  txAmount.value = Number(activity.amount ?? 0)
+  txBankId.value = String(activity.bankid ?? "")
+  txSubcategoryId.value = String(activity.subcategoryid ?? "")
+  txDate.value = normalizeDateToISO(activity.date)
+
+  showModal.value = true
+}
+
+async function updateBankBalance(userid, bank, nextAmount) {
+  // banks/update.php fordert: name + iban + bankfirma + amount.
+  await fetchJson("/cashflow_api/banks/update.php", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userid,
+      id: Number(bank.id),
+      name: bank.name,
+      iban: bank.iban,
+      amount: nextAmount,
+      bankfirma: bank.bankfirma
+    })
+  })
 }
 
 async function saveTransaction() {
@@ -112,20 +158,62 @@ async function saveTransaction() {
 
   creating.value = true
   try {
-    await fetchJson("/cashflow_api/transactions/create.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userid, subcategoryid: Number(subcategoryid), name, description, amount, bankid: Number(bankid), date })
-    })
+    if (mode.value === "edit") {
+      const e = editingEntry.value
+      if (!e?.id) throw new Error("Kein Eintrag ausgewählt.")
 
-    const bank = banks.value.find(b => String(b.id) === String(bankid))
-    if (bank) {
-      const nextAmount = (Number.isFinite(Number(bank.amount)) ? Number(bank.amount) : 0) + amount
-      await fetchJson("/cashflow_api/banks/update.php", {
+      const oldAmount = Number(e.amount ?? 0)
+      const oldBankId = Number(e.bankid ?? 0)
+      const newBankId = Number(bankid)
+
+      await fetchJson("/cashflow_api/transactions/update.php", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userid, id: Number(bank.id), name: bank.name, iban: bank.iban, amount: nextAmount, bankfirma: bank.bankfirma })
+        body: JSON.stringify({
+          userid,
+          id: Number(e.id),
+          subcategoryid: Number(subcategoryid),
+          name,
+          description,
+          amount,
+          bankid: newBankId,
+          date
+        })
       })
+
+      const oldBank = banks.value.find(b => Number(b.id) === oldBankId)
+      const newBank = banks.value.find(b => Number(b.id) === newBankId)
+
+      if (oldBankId === newBankId) {
+        if (oldBank) {
+          const current = Number(oldBank.amount)
+          const nextAmount = (Number.isFinite(current) ? current : 0) + (amount - oldAmount)
+          await updateBankBalance(userid, oldBank, nextAmount)
+        }
+      } else {
+        if (oldBank) {
+          const oldCurrent = Number(oldBank.amount)
+          const nextOldAmount = (Number.isFinite(oldCurrent) ? oldCurrent : 0) - oldAmount
+          await updateBankBalance(userid, oldBank, nextOldAmount)
+        }
+        if (newBank) {
+          const newCurrent = Number(newBank.amount)
+          const nextNewAmount = (Number.isFinite(newCurrent) ? newCurrent : 0) + amount
+          await updateBankBalance(userid, newBank, nextNewAmount)
+        }
+      }
+    } else {
+      await fetchJson("/cashflow_api/transactions/create.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userid, subcategoryid: Number(subcategoryid), name, description, amount, bankid: Number(bankid), date })
+      })
+
+      const bank = banks.value.find(b => String(b.id) === String(bankid))
+      if (bank) {
+        const nextAmount = (Number.isFinite(Number(bank.amount)) ? Number(bank.amount) : 0) + amount
+        await updateBankBalance(userid, bank, nextAmount)
+      }
     }
 
     closeModal()
@@ -198,6 +286,13 @@ onMounted(() => {
             </div>
           </div>
 
+          <div class="mt-3 flex justify-end">
+            <button @click="openEditModal(activity)"
+              class="px-3 py-2 border border-gray-200 rounded-xl hover:bg-gray-100 text-sm transition">
+              Bearbeiten
+            </button>
+          </div>
+
           <div v-if="filteredActivities.length === 0" class="text-center text-gray-500 py-10">
             Keine Aktivitäten gefunden.
           </div>
@@ -216,7 +311,7 @@ onMounted(() => {
 
         <span class="h-20 pb-3 flex items-center gap-3">
           <ion-icon name="add-circle" class="w-8 h-8 text-teal-400"></ion-icon>
-          <h2 class="text-2xl font-semibold">Neue Aktivität</h2>
+          <h2 class="text-2xl font-semibold">{{ mode === "edit" ? "Aktivität bearbeiten" : "Neue Aktivität" }}</h2>
         </span>
 
         <label class="block text-sm mb-1">Name</label>

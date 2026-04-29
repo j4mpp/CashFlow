@@ -7,6 +7,9 @@ const username = ref(null)
 const router = useRouter()
 const showUserMenu = ref(false)
 const fileInput = ref(null)
+const showNameModal = ref(false)
+const nameInput = ref("")
+const savingName = ref(false)
 
 function triggerFileInput() {
     fileInput.value.click()
@@ -21,6 +24,64 @@ function handleExcelImport(event) {
 
 function closeMenu() {
     mobileOpen.value = false
+}
+
+async function fetchJson(url, options = {}) {
+    const res = await fetch(url, {
+        credentials: "include",
+        ...options
+    })
+
+    let data = null
+    try {
+        data = await res.json()
+    } catch {
+        data = null
+    }
+
+    if (!res.ok || data?.error) {
+        throw new Error(data?.error || "Request fehlgeschlagen")
+    }
+
+    return data
+}
+
+function openNameModal() {
+    showUserMenu.value = false
+    showNameModal.value = true
+    nameInput.value = username.value ?? ""
+}
+
+function closeNameModal() {
+    showNameModal.value = false
+    savingName.value = false
+}
+
+async function saveNameChange() {
+    const newName = String(nameInput.value ?? "").trim()
+    if (!newName) return alert("Bitte einen gültigen Namen eingeben.")
+
+    savingName.value = true
+    try {
+        const data = await fetchJson("/cashflow_api/user/update_name.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ name: newName })
+        })
+
+        const updatedName = data?.name ?? newName
+        localStorage.setItem("username", updatedName)
+        username.value = updatedName
+
+        closeNameModal()
+    } catch (err) {
+        console.error("Fehler beim Namen ändern:", err)
+        alert("Fehler beim Namen ändern.")
+    } finally {
+        savingName.value = false
+    }
 }
 
 function logout() {
@@ -111,9 +172,10 @@ onMounted(() => {
             <!-- Popup -->
             <div v-if="showUserMenu"
                 class="absolute bottom-16 left-4 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
-                <button class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 text-left">
+                <button class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 text-left"
+                    @click="openNameModal">
                     <ion-icon name="person-outline" class="w-5 h-5"></ion-icon>
-                    <span>Profil</span>
+                    <span>Name ändern</span>
                 </button>
 
                 <input ref="fileInput" type="file" accept=".xlsx,.xls,.csv" class="hidden"
@@ -136,4 +198,31 @@ onMounted(() => {
             </div>
         </div>
     </aside>
+
+    <!-- NAME CHANGE MODAL -->
+    <div v-if="showNameModal"
+        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+        @click.self="closeNameModal">
+        <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+            <span class="h-20 pb-3 flex items-center gap-3">
+                <ion-icon name="person" class="w-8 h-8 text-teal-400"></ion-icon>
+                <h2 class="text-2xl font-semibold">Name ändern</h2>
+            </span>
+
+            <label class="block text-sm mb-1">Neuer Name</label>
+            <input v-model="nameInput" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6"
+                :disabled="savingName" />
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button @click="closeNameModal" class="px-4 py-2 border rounded-xl" :disabled="savingName">
+                    Abbrechen
+                </button>
+                <button @click="saveNameChange"
+                    class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl disabled:opacity-50"
+                    :disabled="savingName">
+                    Speichern
+                </button>
+            </div>
+        </div>
+    </div>
 </template>

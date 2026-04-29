@@ -9,6 +9,7 @@ import BankAccountCard from "@/components/BankAccountCard.vue"
 
 const banks = ref([])
 const transactions = ref([])
+const subcategories = ref([])
 
 const totalIncome = ref(0)
 const totalExpense = ref(0)
@@ -16,6 +17,8 @@ const savingsRate = ref(0)
 
 const loadingBanks = ref(true)
 const editingBankId = ref(null)
+const showBankModal = ref(false)
+const savingBank = ref(false)
 
 const pieCanvas = ref(null)
 let pieChart = null
@@ -55,6 +58,11 @@ const entryAmount = ref("")
 const entryBankId = ref("")
 const entryDate = ref(new Date().toISOString().slice(0, 10)) // YYYY-MM-DD
 
+const bankName = ref("")
+const bankIban = ref("")
+const bankAmount = ref("")
+const bankFirma = ref("")
+
 function openEntryModal(bankId, bankName) {
     entryBankId.value = bankId
     selectedBankName.value = bankName
@@ -70,6 +78,83 @@ function openEntryModal(bankId, bankName) {
 function closeEntryModal() {
     showEntryModal.value = false
     activeSubcategoryId.value = ""
+}
+
+function resetBankForm() {
+    bankName.value = ""
+    bankIban.value = ""
+    bankAmount.value = ""
+    bankFirma.value = ""
+}
+
+function openCreateBankModal() {
+    editingBankId.value = null
+    resetBankForm()
+    showBankModal.value = true
+}
+
+function openEditBankModal(bank) {
+    editingBankId.value = Number(bank.id)
+    bankName.value = bank.name || ""
+    bankIban.value = bank.iban || ""
+    bankAmount.value = String(bank.amount ?? "")
+    bankFirma.value = bank.bankfirma || ""
+    showBankModal.value = true
+}
+
+function closeBankModal() {
+    showBankModal.value = false
+    editingBankId.value = null
+    resetBankForm()
+}
+
+async function saveBank() {
+    const userid = getValidUserId()
+    const name = bankName.value.trim()
+    const iban = bankIban.value.trim()
+    const amount = Number(bankAmount.value)
+    const bankfirma = bankFirma.value.trim()
+
+    if (!name) return alert("Bitte Namen eingeben.")
+    if (!iban) return alert("Bitte IBAN eingeben.")
+    if (!Number.isFinite(amount)) return alert("Bitte gültigen Betrag eingeben.")
+    if (!bankfirma) return alert("Bitte Bankfirma eingeben.")
+
+    savingBank.value = true
+    try {
+        const payload = {
+            userid: Number(userid),
+            name,
+            iban,
+            amount,
+            bankfirma
+        }
+
+        if (editingBankId.value) {
+            await fetchJson("/cashflow_api/banks/update.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ...payload,
+                    id: Number(editingBankId.value)
+                })
+            })
+        } else {
+            await fetchJson("/cashflow_api/banks/create.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+        }
+
+        closeBankModal()
+        await fetchBanks()
+    } catch (err) {
+        console.error("Fehler beim Speichern der Bank:", err)
+        alert("Fehler beim Speichern der Bank.")
+    } finally {
+        savingBank.value = false
+    }
 }
 
 async function saveEntry() {
@@ -125,8 +210,8 @@ async function saveEntry() {
         }
 
         closeEntryModal()
-        loading.value = true
-        await fetchCategories()
+        await fetchBanks()
+        await fetchTransactions()
     } catch (err) {
         console.log("Fehler beim Speichern:", err)
         alert("Fehler beim Speichern.")
@@ -146,6 +231,12 @@ async function fetchBanks() {
     loadingBanks.value = false
 
     renderChart()
+}
+
+async function fetchSubcategories() {
+    const userid = getValidUserId()
+    const safeUserId = encodeURIComponent(userid)
+    subcategories.value = await fetchJson(`/cashflow_api/subcategories/get.php?userid=${safeUserId}`)
 }
 
 /* =========================
@@ -247,10 +338,10 @@ function formatBalance(amount) {
     return "€" + Number(amount || 0).toLocaleString("de-DE")
 }
 
-function getBankIcon(type) {
+function getBankIcon(bankId) {
     const userid = localStorage.getItem("userid") || ""
     const safeUserId = /^\d+$/.test(userid) ? userid : "0"
-    return `/cashflow_api/banks/logo.php?userid=${encodeURIComponent(safeUserId)}&bankid=${encodeURIComponent(type)}`
+    return `/cashflow_api/banks/logo.php?userid=${encodeURIComponent(safeUserId)}&bankid=${encodeURIComponent(bankId)}`
 }
 
 /* =========================
@@ -261,10 +352,12 @@ onMounted(async () => {
     try {
         await fetchBanks()
         await fetchTransactions()
+        await fetchSubcategories()
     } catch (err) {
         console.error("Dashboard konnte nicht geladen werden:", err)
         banks.value = []
         transactions.value = []
+        subcategories.value = []
         loadingBanks.value = false
     }
 
@@ -336,7 +429,7 @@ onMounted(async () => {
 
             <div v-for="bank in banks" :key="bank.id">
                 <BankAccountCard :accountName="bank.name" :balanceId="bank.id" :iban="bank.iban" :balance="bank.amount"
-                    :icon="getBankIcon(bank.bankfirma)" @add-entry="openEntryModal" />
+                    :icon="getBankIcon(bank.id)" @add-entry="openEntryModal" @edit-bank="openEditBankModal(bank)" />
             </div>
 
         </main>
@@ -372,6 +465,14 @@ onMounted(async () => {
                 </option>
             </select>
 
+            <label class="block text-sm mb-1">Kategorie</label>
+            <select v-model="activeSubcategoryId" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4">
+                <option value="">Bitte wählen</option>
+                <option v-for="s in subcategories" :key="s.id" :value="s.id">
+                    {{ s.name }}
+                </option>
+            </select>
+
             <label class="block text-sm mb-1">Datum</label>
             <input v-model="entryDate" type="date" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
 
@@ -386,6 +487,49 @@ onMounted(async () => {
                 </button>
             </div>
 
+        </div>
+    </div>
+
+    <!-- FLOAT BUTTON -->
+    <button @click="openCreateBankModal"
+        class="fixed bottom-6 right-6 w-14 h-14 bg-teal-400 hover:bg-teal-500 text-white rounded-full shadow-lg flex items-center justify-center text-3xl transition hover:scale-110 z-40">
+        <ion-icon name="add-outline"></ion-icon>
+    </button>
+
+    <!-- BANK MODAL -->
+    <div v-if="showBankModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
+            <span class="h-20 pb-3 flex items-center gap-3">
+                <ion-icon name="business" class="w-8 h-8 text-teal-400"></ion-icon>
+                <h2 class="text-2xl font-semibold">
+                    {{ editingBankId ? "Bank bearbeiten" : "Neue Bank" }}
+                </h2>
+            </span>
+
+            <label class="block text-sm mb-1">Name</label>
+            <input v-model="bankName" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+            <label class="block text-sm mb-1">IBAN</label>
+            <input v-model="bankIban" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+            <label class="block text-sm mb-1">Kontostand (€)</label>
+            <input v-model="bankAmount" type="number" step="0.01"
+                class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-4" />
+
+            <label class="block text-sm mb-1">Bankfirma</label>
+            <input v-model="bankFirma" class="w-full px-3 py-2 border border-gray-300 rounded-xl mb-6" />
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button @click="closeBankModal" class="px-4 py-2 border rounded-xl" :disabled="savingBank">
+                    Abbrechen
+                </button>
+
+                <button @click="saveBank"
+                    class="px-4 py-2 bg-teal-400 hover:bg-teal-500 text-white rounded-xl disabled:opacity-50"
+                    :disabled="savingBank">
+                    Speichern
+                </button>
+            </div>
         </div>
     </div>
 </template>

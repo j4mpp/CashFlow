@@ -277,8 +277,7 @@ onMounted(() => {
               <div class="flex items-center gap-2">
                 <p class="font-semibold text-lg">{{ activity.name }}</p>
                 <button @click.stop="openEditModal(activity)" type="button"
-                  class="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-100 transition"
-                  title="Aktivität bearbeiten">
+                  class="w-8 h-8 flex items-center justify-center transition" title="Aktivität bearbeiten">
                   <ion-icon name="pencil" class="w-4 h-4 text-teal-400"></ion-icon>
                 </button>
               </div>

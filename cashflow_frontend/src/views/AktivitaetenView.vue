@@ -274,7 +274,14 @@ onMounted(() => {
           class="rounded-2xl p-5 bg-white/60 backdrop-blur-xl border border-white/40 shadow-xl hover:scale-[1.01] transition duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <p class="font-semibold text-lg">{{ activity.name }}</p>
+              <div class="flex items-center gap-2">
+                <p class="font-semibold text-lg">{{ activity.name }}</p>
+                <button @click.stop="openEditModal(activity)" type="button"
+                  class="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-xl hover:bg-gray-100 transition"
+                  title="Aktivität bearbeiten">
+                  <ion-icon name="pencil" class="w-4 h-4 text-teal-400"></ion-icon>
+                </button>
+              </div>
               <p class="text-sm text-gray-600">{{ activity.account }} • {{ activity.category }}</p>
               <p v-if="activity.description" class="text-xs text-gray-500 mt-1">{{ activity.description }}</p>
               <p v-if="activity.date" class="text-xs text-gray-400 mt-1">
@@ -284,13 +291,6 @@ onMounted(() => {
             <div :class="['text-xl font-semibold', activity.amount < 0 ? 'text-red-500' : 'text-green-600']">
               {{ activity.amount < 0 ? "-" : "+" }} {{ Math.abs(activity.amount).toLocaleString("de-DE") }} € </div>
             </div>
-          </div>
-
-          <div class="mt-3 flex justify-end">
-            <button @click="openEditModal(activity)"
-              class="px-3 py-2 border border-gray-200 rounded-xl hover:bg-gray-100 text-sm transition">
-              Bearbeiten
-            </button>
           </div>
 
           <div v-if="filteredActivities.length === 0" class="text-center text-gray-500 py-10">

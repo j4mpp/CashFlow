@@ -116,7 +116,22 @@ onMounted(() => {
     ]">
         <!-- Brand -->
         <div class="h-20 pt-6 px-5 flex items-center gap-3">
-            <ion-icon name="cash-outline" class="w-8 h-8 text-teal-400"></ion-icon>
+            <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 424.53 430.47">
+                <g>
+                    <path fill="#80c17f"
+                        d="M424.48,214.57l-22.04-1.14c-.86-140.05-148.02-233.76-275.47-169.08C5.98,105.76-12.64,274.19,90.49,361.99c121.11,103.1,304.39,18.42,311.94-137.16l22.04-.38c-6.37,148.65-154.47,247.06-294.46,189.22C-16.7,353.06-45.62,152.35,76.06,50.44c140.54-117.72,349.44-15.58,348.42,164.14h0Z" />
+                    <g>
+                        <path fill="#fffeff"
+                            d="M424.48,214.57c-.02,3.27.14,6.61,0,9.88l-22.04.38c-7.55,155.59-190.83,240.26-311.94,137.16C-12.64,274.19,5.99,105.76,126.98,44.35c127.44-64.68,274.61,29.03,275.47,169.08l22.04,1.14h-.01Z" />
+                        <path fill="#008d36"
+                            d="M208.29,65.63c42.47-3.08,91.33,12.03,118.93,45.21l-22.42,26.22c-53.18-57.02-148.88-45.14-183.52,25.46l174.4,1.14-13.68,31.92-243.55-.38c2.81-4.58,11.03-28.2,13.68-30.4,3.43-2.84,21.8-.22,26.98-1.14,21.57-53.55,70.48-93.77,129.18-98.03h0Z" />
+                        <path fill="#e50d36"
+                            d="M115.96,251.8c23.54,84.1,133.26,104.01,189.6,39.52l22.42,27.74c-80.26,85.01-226.59,46.49-252.29-68.01,13.39.09,26.94.73,40.27.76h0Z" />
+                        <path fill="#e50d36"
+                            d="M115.96,251.8c-13.33-.03-26.89-.67-40.27-.76s-26.37.38-39.52-.38l14.82-32.3h221.13l-13.68,32.68c-47.47-.91-95.05.88-142.48.76h0Z" />
+                    </g>
+                </g>
+            </svg>
             <span class="text-2xl font-semibold">CashFlow</span>
         </div>
 
@@ -200,8 +215,7 @@ onMounted(() => {
     </aside>
 
     <!-- NAME CHANGE MODAL -->
-    <div v-if="showNameModal"
-        class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+    <div v-if="showNameModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
         @click.self="closeNameModal">
         <div class="w-11/12 max-w-md p-6 rounded-2xl bg-white backdrop-blur-xl border border-white/40 shadow-xl">
             <span class="h-20 pb-3 flex items-center gap-3">
